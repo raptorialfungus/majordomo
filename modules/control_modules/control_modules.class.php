@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.1 (auto-set)
 */
@@ -14,13 +14,13 @@ class control_modules extends module {
  function control_modules() {
   // setting module name
   $this->name="control_modules";
-  $this->title="Project Modules";
-  $this->module_category="System";
+  $this->title="<#LANG_MODULE_MODULES#>";
+  $this->module_category="<#LANG_SECTION_SYSTEM#>";
   $this->checkInstalled();
  }
 
 // --------------------------------------------------------------------
-function saveParams() {
+function saveParams($data=1) {
  // saving current module data and data of all parent modules
  $p=array();
  return parent::saveParams($p);
@@ -69,6 +69,16 @@ function getParams() {
      $rec['HIDDEN']=1;
     }
     SQLUpdate('project_modules', $rec);
+    $this->redirect("?");
+
+   } elseif ($mode2=="ignore") {
+    SQLExec("DELETE FROM ignore_updates WHERE NAME LIKE '".DBSafe($rec['NAME'])."'");
+    $tmp=array();
+    $tmp['NAME']=$rec['NAME'];
+    SQLInsert('ignore_updates', $tmp);
+    $this->redirect("?");
+   } elseif ($mode2=="unignore") {
+    SQLExec("DELETE FROM ignore_updates WHERE NAME LIKE '".DBSafe($rec['NAME'])."'");
     $this->redirect("?");
    } elseif ($mode2=="install") {
     $rec=SQLSelectOne("SELECT * FROM project_modules WHERE NAME='".$name."'");
@@ -123,10 +133,17 @@ function getParams() {
 
   $this->getModulesList();
   $lst=$this->modules;
-  for($i=0;$i<count($lst);$i++) {
+  $lstCnt = count($lst);
+
+  for ($i = 0; $i < $lstCnt ;$i++)
+  {
    $rec=SQLSelectOne("SELECT *, DATE_FORMAT(ADDED, '%M %d, %Y (%H:%i)') as DAT FROM project_modules WHERE NAME='".$lst[$i]['FILENAME']."'");
    if (IsSet($rec['ID'])) {
     outHash($rec, $lst[$i]);
+   }
+   $ignored=SQLSelectOne("SELECT ID FROM ignore_updates WHERE NAME LIKE '".DBSafe($lst[$i]['NAME'])."'");
+   if ($ignored['ID']) {
+    $lst[$i]['IGNORED']=1;
    }
   }
 
@@ -149,33 +166,54 @@ function getParams() {
     $lst[]=$rec;
    }
   }
+
+   function cmp_modules($a, $b) {
+    return strcmp($a["FILENAME"], $b["FILENAME"]);
+   }
+
+  usort($lst, 'cmp_modules');
+
   $this->modules=$lst;
   return $lst;
  }
 
-// --------------------------------------------------------------------
- function install() {
-  parent::install();
-  $this->getModulesList();
-  $lst=$this->modules;
-  $code="";
-  for($i=0;$i<count($lst);$i++) {
-   if (file_exists(DIR_MODULES.$lst[$i]['FILENAME']."/".$lst[$i]['FILENAME'].".class.php")) {
-    if ($lst[$i]['FILENAME']=='control_modules') {
-     continue;
-    }
-    @unlink(DIR_MODULES.$lst[$i]['FILENAME']."/installed");
-    include_once(DIR_MODULES.$lst[$i]['FILENAME']."/".$lst[$i]['FILENAME'].".class.php");
-    $obj="\$object$i";
-    $code.="$obj=new ".$lst[$i]['FILENAME'].";\n";
+function install($parent_name = "")
+{
+   parent::install($parent_name);
+  
+   $this->getModulesList();
+   
+   $lst    = $this->modules;
+   $lstCnt = count($lst);
+   $code   = "";
+
+   for ($i = 0; $i < $lstCnt; $i++)
+   {
+      if (file_exists(DIR_MODULES . $lst[$i]['FILENAME'] . "/" . $lst[$i]['FILENAME'] . ".class.php"))
+      {
+         if ($lst[$i]['FILENAME'] == 'control_modules')
+            continue;
+
+         $installedFile = DIR_MODULES . $lst[$i]['FILENAME'] . "/installed";
+         if (file_exists($installedFile))
+            unlink($installedFile);
+         
+         include_once(DIR_MODULES . $lst[$i]['FILENAME'] . "/" . $lst[$i]['FILENAME'] . ".class.php");
+         $obj = "\$object$i";
+         $code = "$obj=new " . $lst[$i]['FILENAME'] . ";\n";
+         //echo "Installing ".$lst[$i]['FILENAME']."\n";
+         @eval("$code");
+      }
    }
-  }
-  @eval("$code");
- }
+
+   
+   SQLExec("UPDATE project_modules SET HIDDEN=0 WHERE NAME LIKE '" . $this->name . "'");
+}
 
 // --------------------------------------------------------------------
- function dbInstall() {
+ function dbInstall($data) {
   $data = <<<EOD
+
    project_modules: ID tinyint(3) unsigned NOT NULL auto_increment
    project_modules: NAME varchar(50)  DEFAULT '' NOT NULL 
    project_modules: TITLE varchar(100)  DEFAULT '' NOT NULL 
@@ -185,6 +223,11 @@ function getParams() {
    project_modules: HIDDEN int(3)  DEFAULT '0' NOT NULL
    project_modules: PRIORITY int(10)  DEFAULT '0' NOT NULL
    project_modules: ADDED timestamp(14)
+
+   ignore_updates: ID tinyint(3) unsigned NOT NULL auto_increment
+   ignore_updates: NAME varchar(50)  DEFAULT '' NOT NULL 
+
+
 EOD;
   parent::dbInstall($data);
  }

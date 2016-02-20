@@ -12,11 +12,14 @@
   if ($("#hidPlayPath").val()=='' && pcmd=='refresh') return false;
   var elem=document.getElementById('playerStatus');
   elem.innerHTML=pcmd+'...';
-  var url="?ajax=1";
+  var url="<#ROOTHTML#>popup/app_player.html?ajax=1";
   url+='&command='+pcmd;
   url+='&play_terminal='+$("#selPlayTerminal").val();
   url+='&play='+URLencode($("#hidPlayPath").val());
   url+='&rnd='+URLencode($("#hidPlayerRnd").val());
+  if (pcmd=='volume') {
+   url+='&volume='+URLencode($("#selVolume").val());
+  }
   //prompt(url, url);
   AJAXRequest(url, 'playerCommandProcessed', '');
   return false;
@@ -27,7 +30,7 @@
   <form action="?" method="get" name="frmPlayerControl" id="frmPlayerControl">
   <td align="right" style="vertical-align:middle">
   <div[#if TERMINALS_TOTAL="1" || TERMINALS_TOTAL="0"#] style="display:none"[#endif#]>
-   <select name="play_terminal" id="selPlayTerminal">
+   <select name="play_terminal" id="selPlayTerminal" class="form-control input-sm">
     <option value="">
     [#begin TERMINALS#]
     <option value="[#NAME#]"[#if SELECTED#] selected[#endif SELECTED#]>[#TITLE#]
@@ -44,16 +47,26 @@
 #-->
   </td>
   [#if MODE="menu"#]</tr><tr>[#endif MODE#]
+  <td nowrap><select name="volume" id='selVolume' onChange="playerCommand('volume')" class="form-control input-sm">
+   [#begin VOLUMES#]
+   <option value="[#VALUE#]"[#if SELECTED#] selected[#endif#]>[#VALUE#]%
+   [#end VOLUMES#]
+  </select></td>
   <td valign="top">
-   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("pause");' style="padding:0;margin:0;display:inline;"><img src="/img/icons/playback_pause.png" border="0"></a></div>
-   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("prev");' style="padding:0;margin:0;display:inline;"><img src="/img/icons/playback_prev.png" border="0"></a></div>
-   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("refresh");' style="padding:0;margin:0;display:inline;"><img src="/img/icons/playback_play.png" border="0"></a></div> 
-   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("next");' style="padding:0;margin:0;display:inline;"><img src="/img/icons/playback_next.png" border="0"></a></div>
-   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("fullscreen");' style="padding:0;margin:0;display:inline;"><img src="/img/icons/eye.png" border="0"></a></div>
-   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("close");' style="padding:0;margin:0;display:inline;"><img src="/img/icons/delete.png" border="0"></a></div>
+   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("pause");' style="padding:0;margin:0;display:inline;"><img src="<#ROOTHTML#>img/icons/playback_pause.png" border="0"></a></div>
+   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("prev");' style="padding:0;margin:0;display:inline;"><img src="<#ROOTHTML#>img/icons/playback_prev.png" border="0"></a></div>
+   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("refresh");' style="padding:0;margin:0;display:inline;"><img src="<#ROOTHTML#>img/icons/playback_play.png" border="0"></a></div> 
+   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("next");' style="padding:0;margin:0;display:inline;"><img src="<#ROOTHTML#>img/icons/playback_next.png" border="0"></a></div>
+   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("fullscreen");' style="padding:0;margin:0;display:inline;"><img src="<#ROOTHTML#>img/icons/eye.png" border="0"></a></div>
+   <div style="float:left;width:48px;height:48px;text-align:center"><a href="#" onClick='return playerCommand("close");' style="padding:0;margin:0;display:inline;"><img src="<#ROOTHTML#>img/icons/delete.png" border="0"></a></div>
   </td>
  </tr>
  <input type="hidden" name="play" value="[#PLAY#]" id="hidPlayPath">
  <input type="hidden" name="rnd" value="[#RND#]" id="hidPlayerRnd">
  </form>
+ [#if PLAY!="" && TERMINALS_TOTAL="1" && LAST_PLAY!="1"#]
+ <script language="javascript">
+  playerCommand('refresh');
+ </script>
+ [#endif#]
 </table>

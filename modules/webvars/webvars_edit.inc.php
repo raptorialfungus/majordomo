@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.3 (wizard)
 */
@@ -13,7 +13,7 @@
    global $hostname;
    $rec['HOSTNAME']=$hostname;
 
-   if (!preg_match('/^http:/is', $rec['HOSTNAME'])) {
+   if (!preg_match('/^http:/is', $rec['HOSTNAME']) && !preg_match('/^https:/is', $rec['HOSTNAME']) && !preg_match('/\%/is', $rec['HOSTNAME'])) {
     $out['ERR_HOSTNAME']=1;
     $ok=0;
    }
@@ -54,9 +54,9 @@
    global $code;
    $rec['CODE']=$code;
 
-   global $run_type_online;
+   global $run_type;
 
-       if ($run_type_online=='script') {
+       if ($run_type=='script') {
         global $script_id;
         $rec['SCRIPT_ID']=$script_id;
        } else {
@@ -64,7 +64,7 @@
        }
 
 
-   if ($rec['CODE']!='' && $run_type_online=='code') {
+   if ($rec['CODE']!='' && $run_type=='code') {
     //echo $content;
     $errors=php_syntax_error($code);
     if ($errors) {
@@ -107,15 +107,14 @@
    $out['TYPE_OPTIONS'][]=array('VALUE'=>$value, 'TITLE'=>$title);
    $type_opt[$value]=$title;
   }
-  for($i=0;$i<count($out['TYPE_OPTIONS']);$i++) {
-   if ($out['TYPE_OPTIONS'][$i]['VALUE']==$rec['TYPE']) {
-    $out['TYPE_OPTIONS'][$i]['SELECTED']=1;
-    /*
-    $out['TYPE']=$out['TYPE_OPTIONS'][$i]['TITLE'];
-    $rec['TYPE']=$out['TYPE_OPTIONS'][$i]['TITLE'];
-    */
-   }
+
+  $optionsTypeCnt = count($out['TYPE_OPTIONS']);
+  for ($i = 0; $i < $optionsTypeCnt; $i++)
+  {
+      if ($out['TYPE_OPTIONS'][$i]['VALUE'] == $rec['TYPE'])
+         $out['TYPE_OPTIONS'][$i]['SELECTED'] = 1;
   }
+
   if (is_array($rec)) {
    foreach($rec as $k=>$v) {
     if (!is_array($v)) {

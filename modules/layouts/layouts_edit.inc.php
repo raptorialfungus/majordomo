@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.1 (wizard)
 */
@@ -32,6 +32,24 @@
   //updating 'URL' (url)
    global $url;
    $rec['URL']=$url;
+
+   global $delete_icon;
+   if ($delete_icon) {
+    if ($rec['ICON']!='') {
+     @unlink(ROOT.'cms/layouts/'.$rec['ICON']);
+    }
+    $rec['ICON']="";
+   }
+
+   global $icon;
+   global $icon_name;
+   if ($icon!='') {
+    if ($rec['ICON']!='') {
+     @unlink(ROOT.'cms/layouts/'.$rec['ICON']);
+    }
+    $rec['ICON']=$rec['ID'].'_'.$icon_name;
+    copy($icon, ROOT.'cms/layouts/'.$rec['ICON']);
+   }
 
    global $refresh;
    $rec['REFRESH']=(int)$refresh;
@@ -72,12 +90,13 @@
    $out['TYPE_OPTIONS'][]=array('VALUE'=>$value, 'TITLE'=>$title);
    $type_opt[$value]=$title;
   }
-  for($i=0;$i<count($out['TYPE_OPTIONS']);$i++) {
-   if ($out['TYPE_OPTIONS'][$i]['VALUE']==$rec['TYPE']) {
-    $out['TYPE_OPTIONS'][$i]['SELECTED']=1;
-    //$out['TYPE']=$out['TYPE_OPTIONS'][$i]['TITLE'];
-    //$rec['TYPE']=$out['TYPE_OPTIONS'][$i]['TITLE'];
-   }
+
+  $optionsTypeCnt = count($out['TYPE_OPTIONS']);
+
+  for ($i = 0; $i < $optionsTypeCnt; $i++)
+  {
+      if ($out['TYPE_OPTIONS'][$i]['VALUE'] == $rec['TYPE'])
+         $out['TYPE_OPTIONS'][$i]['SELECTED'] = 1;
   }
 
   if (is_array($rec)) {

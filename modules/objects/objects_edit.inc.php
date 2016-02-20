@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.2 (auto-set)
 */
@@ -19,12 +19,21 @@
   //updating 'TITLE' (varchar, required)
    global $title;
    $rec['TITLE']=$title;
+
+   $tmp=SQLSelectOne("SELECT ID FROM objects WHERE TITLE LIKE '".DBSafe($rec['TITLE'])."' AND ID!=".(int)$rec['ID']);
+   if ($tmp['ID']) {
+    $rec['TITLE']='';
+   }
+
    if ($rec['TITLE']=='') {
     $out['ERR_TITLE']=1;
     $ok=0;
    }
   //updating 'Class' (select, required)
    global $class_id;
+   if ($rec['CLASS_ID'] && $class_id!=$rec['CLASS_ID']) {
+    $class_changed_from=$rec['CLASS_ID'];
+   }
    $rec['CLASS_ID']=$class_id;
    if (!$rec['CLASS_ID']) {
     $out['ERR_CLASS_ID']=1;
@@ -36,6 +45,11 @@
   //updating 'Location' (select)
    global $location_id;
    $rec['LOCATION_ID']=$location_id;
+
+   global $keep_history;
+   $rec['KEEP_HISTORY']=$keep_history;
+
+
   }
   // step: properties
   if ($this->tab=='properties') {
@@ -50,6 +64,36 @@
    if ($ok) {
     if ($rec['ID']) {
      SQLUpdate($table_name, $rec); // update
+
+     if ($class_changed_from) {
+      // class changed from $class_changed_from to $rec['CLASS_ID']
+      // step 1. take all properties out of class
+      $pvalues=SQLSelect("SELECT pvalues.*, properties.TITLE as PROPERTY_TITLE FROM pvalues LEFT JOIN properties ON pvalues.PROPERTY_ID=properties.ID WHERE properties.CLASS_ID!=0 AND pvalues.OBJECT_ID='".$rec['ID']."'");
+      $total=count($pvalues);
+      for($i=0;$i<$total;$i++) {
+       $new_property=array();
+       $new_property['TITLE']=$pvalues[$i]['PROPERTY_TITLE'];
+       $new_property['CLASS_ID']=0;
+       $new_property['OBJECT_ID']=$rec['ID'];
+       $new_property['ID']=SQLInsert('properties', $new_property);
+       $pvalues[$i]['PROPERTY_ID']=$new_property['ID'];
+       unset($pvalues[$i]['PROPERTY_TITLE']);
+       SQLUpdate('pvalues', $pvalues[$i]);
+      }
+      // step 2. apply matched properties of new class
+      $properties=$this->getParentProperties($rec['CLASS_ID'], '', 1);
+      $total=count($properties);
+      for($i=0;$i<$total;$i++) {
+       $pvalue=SQLSelectOne("SELECT pvalues.* FROM pvalues LEFT JOIN properties ON pvalues.PROPERTY_ID=properties.ID WHERE properties.CLASS_ID=0 AND pvalues.OBJECT_ID='".$rec['ID']."' AND properties.TITLE LIKE '".DBSafe($properties[$i]['TITLE'])."'");
+       if ($pvalue['ID']) {
+        $old_prop=$pvalue['PROPERTY_ID'];
+        $pvalue['PROPERTY_ID']=$properties[$i]['ID'];
+        SQLUpdate('pvalues', $pvalue);
+        SQLExec("DELETE FROM properties WHERE ID='".$old_prop."'");
+       }
+      }
+     }
+
     } else {
      $new_rec=1;
      $rec['ID']=SQLInsert($table_name, $rec); // adding new record
@@ -67,7 +111,7 @@
   for($classes_i=0;$classes_i<$classes_total;$classes_i++) {
    $class_id_opt[$tmp[$classes_i]['ID']]=$tmp[$classes_i]['TITLE'];
   }
-  for($i=0;$i<count($tmp);$i++) {
+  for($i=0;$i<$classes_total;$i++) {
    if ($rec['CLASS_ID']==$tmp[$i]['ID']) $tmp[$i]['SELECTED']=1;
   }
   $out['CLASS_ID_OPTIONS']=$tmp;
@@ -77,7 +121,7 @@
   for($locations_i=0;$locations_i<$locations_total;$locations_i++) {
    $location_id_opt[$tmp[$locations_i]['ID']]=$tmp[$locations_i]['TITLE'];
   }
-  for($i=0;$i<count($tmp);$i++) {
+  for($i=0;$i<$locations_total;$i++) {
    if ($rec['LOCATION_ID']==$tmp[$i]['ID']) $tmp[$i]['SELECTED']=1;
   }
   $out['LOCATION_ID_OPTIONS']=$tmp;
@@ -89,7 +133,11 @@
    if ($delete_prop) {
     $pr=SQLSelectOne("SELECT * FROM properties WHERE ID='".$delete_prop."'");
     if ($pr['ID']) {
-     SQLExec("DELETE FROM pvalues WHERE PROPERTY_ID='".$delete_prop."' AND OBJECT_ID='".$rec['ID']."'");
+     $value=SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='".$delete_prop."' AND OBJECT_ID='".$rec['ID']."'");
+     if ($value['ID']) {
+      SQLExec("DELETE FROM phistory WHERE VALUE_ID='".$value['ID']."'");
+      SQLExec("DELETE FROM pvalues WHERE PROPERTY_ID='".$delete_prop."' AND OBJECT_ID='".$rec['ID']."'");
+     }
      if (!$pr['CLASS_ID']) {
       SQLExec("DELETE FROM properties WHERE ID='".$delete_prop."' AND OBJECT_ID='".$rec['ID']."'");
      }
@@ -130,6 +178,9 @@
    $total=count($props);
    //print_R($props);exit;
    for($i=0;$i<$total;$i++) {
+    if (!$props[$i]['KEEP_HISTORY'] && $rec['KEEP_HISTORY']>0) {
+     $props[$i]['KEEP_HISTORY']=$rec['KEEP_HISTORY'];
+    }
     $value=SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='".$props[$i]['ID']."' AND OBJECT_ID='".$rec['ID']."'");
     if ($this->mode=='update') {
      global ${"value".$props[$i]['ID']};
@@ -148,6 +199,7 @@
      $value['VALUE']=${"value".$props[$i]['ID']};
     }
     $props[$i]['VALUE']=$value['VALUE'];
+    $props[$i]['LINKED_MODULES']=$value['LINKED_MODULES'];
    }
 
    $out['PROPERTIES']=$props;
@@ -217,9 +269,8 @@
        } else {
         $my_meth['ID']=SQLInsert('methods', $my_meth);
        }
-       
        $out['OK']=1;
-
+       
     }
 
     }

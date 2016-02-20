@@ -23,7 +23,7 @@
 
 // --------------------------------------------------------------------
 
-function saveParams() {
+function saveParams($data = 1) {
  $p=array();
  $p["action"]=$this->action;
  $p['doc_name']=$this->doc_name;
@@ -46,14 +46,38 @@ function getParams() {
   function run() {
   global $session;
 
+   Define('ALTERNATIVE_TEMPLATES', 'templates_alt');
 
+
+   if ($this->action=='ajaxgetglobal') {
+    header ("HTTP/1.0: 200 OK\n");
+    header ('Content-Type: text/html; charset=utf-8');
+    $res['DATA']=getGlobal($_GET['var']);
+    echo json_encode($res);
+    global $db;
+    $db->Disconnect();
+    exit;
+   }
+
+   if ($this->action=='ajaxsetglobal') {
+    header ("HTTP/1.0: 200 OK\n");
+    header ('Content-Type: text/html; charset=utf-8');
+    setGlobal($_GET['var'], $_GET['value']);
+    $res['DATA']='OK';
+    echo json_encode($res);
+    global $db;
+    $db->Disconnect();
+    exit;
+   }
+   
    if ($this->action=='getlatestnote') {
     header ("HTTP/1.0: 200 OK\n");
     header ('Content-Type: text/html; charset=utf-8');
 
-    $msg=SQLSelectOne("SELECT * FROM shouts WHERE MEMBER_ID=0 ORDER BY ADDED DESC LIMIT 1");
-    echo $msg['MESSAGE'];
-
+    $msg=SQLSelectOne("SELECT * FROM shouts WHERE MEMBER_ID=0 ORDER BY ID DESC LIMIT 1");
+    $res=array();
+    $res['DATA']=$msg['MESSAGE'];
+    echo json_encode($res);
     global $db;
     $db->Disconnect();
     exit;
@@ -63,29 +87,35 @@ function getParams() {
     header ("HTTP/1.0: 200 OK\n");
     header ('Content-Type: text/html; charset=utf-8');
 
-    if ($dir = @opendir(ROOT."cached")) { 
+    if ($dir = @opendir(ROOT."cached/voice")) { 
        while (($file = readdir($dir)) !== false) { 
        if (preg_match('/\.mp3$/', $file)) {
-        $mtime=filemtime(ROOT."cached/".$file);
+        $mtime=filemtime(ROOT."cached/voice/".$file);
+        /*
         if ((time()-$mtime)>60*60*24 && $mtime>0) {
          //old file, delete?
-         unlink(ROOT."cached/".$file);
+         unlink(ROOT."cached/voice".$file);
         } else {
-         $files[]=array('FILENAME'=>$file, 'MTIME'=>filemtime(ROOT."cached/".$file));
         }
+        */
+        $files[]=array('FILENAME'=>$file, 'MTIME'=>$mtime);
        }
 
        if (preg_match('/\.wav$/', $file)) {
-        $mtime=filemtime(ROOT."cached/".$file);
+        $mtime=filemtime(ROOT."cached/voice/".$file);
+        /*
         if ((time()-$mtime)>60*60*24 && $mtime>0) {
          //old file, delete?
-         unlink(ROOT."cached/".$file);
+         unlink(ROOT."cached/voice/".$file);
         }
+        */
        }
 
       }
      closedir($dir); 
     } 
+
+    //print_r($files);exit;
 
     if (is_array($files)) {
      function sortFiles($a, $b) {
@@ -93,7 +123,7 @@ function getParams() {
          return ($a['MTIME'] > $b['MTIME']) ? -1 : 1; 
      }
      usort($files, 'sortFiles');
-     echo '/cached/'.$files[0]['FILENAME'];
+     echo '/cached/voice/'.$files[0]['FILENAME'];
     }
 
     global $db;
@@ -101,7 +131,7 @@ function getParams() {
     exit;
    }
 
-   if (!defined('SETTINGS_SITE_LANGUAGE') || !defined('SETTINGS_SITE_TIMEZONE') || !defined('SETTINGS_TTS_GOOGLE')) {
+   if (!defined('SETTINGS_SITE_LANGUAGE') || !defined('SETTINGS_SITE_TIMEZONE') || !defined('SETTINGS_GROWL_ENABLE') || !defined('SETTINGS_HOOK_BEFORE_SAY')) {
     $this->action='first_start';
    }
 
@@ -116,7 +146,29 @@ function getParams() {
    global $username;
    
    if ($username) {
-    $session->data['USERNAME']=$username;
+    $user=SQLSelectOne("SELECT * FROM users WHERE USERNAME LIKE '".DBSafe($username)."'");
+    if (!$user['PASSWORD']) {
+     $session->data['SITE_USERNAME']=$user['USERNAME'];
+     $session->data['SITE_USER_ID']=$user['ID'];
+    } else {
+     if (!isset($_SERVER['PHP_AUTH_USER'])) {
+      header('WWW-Authenticate: Basic realm="MajorDoMo"');
+      header('HTTP/1.0 401 Unauthorized');
+      echo 'Password required!';
+      exit;
+     } else {
+      if ($_SERVER['PHP_AUTH_USER']==$user['USERNAME'] && $_SERVER['PHP_AUTH_PW']==$user['PASSWORD']) {
+       $session->data['SITE_USERNAME']=$user['USERNAME'];
+       $session->data['SITE_USER_ID']=$user['ID'];
+      } else {
+       header('WWW-Authenticate: Basic realm="MajorDoMo"');
+       header('HTTP/1.0 401 Unauthorized');
+       echo 'Incorrect username/password!';
+       exit;
+      }
+     }    
+
+    }
    }
    global $terminal;
    if ($terminal) {
@@ -127,10 +179,20 @@ function getParams() {
     $out['APP_ACTION']=1;
    }
 
+   if ($this->app_action) {
+    $out['APP_ACTION']=1;
+   }
+
+
+
 
    $terminals=SQLSelect("SELECT * FROM terminals ORDER BY TITLE");
    $total=count($terminals);
    for($i=0;$i<$total;$i++) {
+    //!$session->data['TERMINAL'] &&  
+    if ($terminals[$i]['HOST']!='' && $_SERVER['REMOTE_ADDR']==$terminals[$i]['HOST']) {
+     $session->data['TERMINAL']=$terminals[$i]['NAME'];
+    }
     if ($terminals[$i]['NAME']==$session->data['TERMINAL']) {
      $terminals[$i]['SELECTED']=1;
      $out['TERMINAL_TITLE']=$terminals[$i]['TITLE'];
@@ -145,20 +207,50 @@ function getParams() {
    $users=SQLSelect("SELECT * FROM users ORDER BY NAME");
    $total=count($users);
    for($i=0;$i<$total;$i++) {
-    if ($users[$i]['USERNAME']==$session->data['USERNAME']) {
+    if ($users[$i]['USERNAME']==$session->data['SITE_USERNAME']) {
      $users[$i]['SELECTED']=1;
      $out['USER_TITLE']=$users[$i]['NAME'];
+     $out['USER_AVATAR']=$users[$i]['AVATAR'];
+    } elseif (!$session->data['SITE_USERNAME'] && $users[$i]['HOST'] && $users[$i]['HOST']==$_SERVER['REMOTE_ADDR']) {
+     $session->data['SITE_USERNAME']=$users[$i]['USERNAME'];
+     $session->data['SITE_USER_ID']=$users[$i]['ID'];     
+     $out['USER_TITLE']=$users[$i]['NAME'];
+     $out['USER_AVATAR']=$users[$i]['AVATAR'];
+    }
+    if ($users[$i]['IS_DEFAULT']==1) {
+     $out['DEFAULT_USERNAME']=$users[$i]['USERNAME'];
+     $out['DEFAULT_USER_ID']=$users[$i]['ID'];
     }
    }
    $out['USERS']=$users;
    if ($total==1) {
     $out['HIDE_USERS']=1;
-    $session->data['USERNAME']=$users[0]['USERNAME'];
+    $session->data['SITE_USERNAME']=$users[0]['USERNAME'];
+    $session->data['SITE_USER_ID']=$users[0]['ID'];
+   }
+   if (!$session->data['SITE_USERNAME'] && $out['DEFAULT_USERNAME']) {
+    $session->data['SITE_USERNAME']=$out['DEFAULT_USERNAME'];
+    $session->data['SITE_USER_ID']=$out['DEFAULT_USER_ID'];
+    for($i=0;$i<$total;$i++) {
+     if ($users[$i]['USERNAME']==$session->data['USERNAME']) {
+      $users[$i]['SELECTED']=1;
+      $out['USER_TITLE']=$users[$i]['NAME'];
+      $out['USER_AVATAR']=$users[$i]['AVATAR'];
+     }
+    }
+   }
+
+   if ($out['USER_TITLE']) {
+    Define('USER_TITLE', $out['USER_TITLE']);
+    Define('USER_AVATAR', $out['USER_AVATAR']);
+   } else {
+    Define('USER_TITLE', '');
+    Define('USER_AVATAR', '');
    }
 
 
    if ($out["DOC_NAME"]) {
-    $doc=SQLSelectOne("SELECT ID FROM cms_docs WHERE NAME LIKE '".DBSafe($out['DOC_NAME'])."'");
+    //$doc=SQLSelectOne("SELECT ID FROM cms_docs WHERE NAME LIKE '".DBSafe($out['DOC_NAME'])."'");
     if ($doc['ID']) {
      $this->doc=$doc['ID'];
     }
@@ -168,8 +260,21 @@ function getParams() {
     $out['AUTHORIZED_ADMIN']=1;
    }
 
-   if ($this->action=='') {
-    $out['LAYOUTS']=SQLSelect("SELECT * FROM layouts ORDER BY PRIORITY DESC, TITLE");
+   if ($this->action=='' || $this->action=='pages') {
+    $res=SQLSelect("SELECT * FROM layouts ORDER BY PRIORITY DESC, TITLE");
+    if ($this->action!='admin') {
+     $total=count($res);
+     $res2=array();
+     for($i=0;$i<$total;$i++) {
+      if (checkAccess('layout', $res[$i]['ID'])) {
+       $res2[]=$res[$i];
+      }
+     }
+     $res=$res2;
+     unset($res2);
+    }
+    $out['LAYOUTS']=$res;
+
     $total=count($out['LAYOUTS']);
     for($i=0;$i<$total;$i++) {
      $out['LAYOUTS'][$i]['NUM']=$i;
@@ -182,6 +287,10 @@ function getParams() {
 
    if ($session->data['MY_MEMBER']) {
     $out['MY_MEMBER']=$session->data['MY_MEMBER'];
+    $tmp=SQLSelectOne("SELECT ID FROM users WHERE ID='".(int)$out['MY_MEMBER']."' AND ACTIVE_CONTEXT_ID!=0 AND TIMESTAMPDIFF(SECOND, ACTIVE_CONTEXT_UPDATED, NOW())>600");
+    if ($tmp['ID']) {
+     SQLExec("UPDATE users SET ACTIVE_CONTEXT_ID=0, ACTIVE_CONTEXT_EXTERNAL=0 WHERE ID='".$tmp['ID']."'");
+    }
    }
 
    $out['AJAX']=$this->ajax;
@@ -191,6 +300,7 @@ function getParams() {
    
    $out['TODAY']=$days[date('w')].', '.date('d.m.Y');
    Define(TODAY, $out['TODAY']);
+   $out['REQUEST_URI']=$_SERVER['REQUEST_URI'];
 
    global $ajt;
    if ($ajt=='') {
@@ -202,10 +312,37 @@ function getParams() {
    if ($this->action=='menu') {
     $template_file=DIR_TEMPLATES."menu.html";
    }
+   if ($this->action=='pages') {
+    $template_file=DIR_TEMPLATES."pages.html";
+   }
+   if ($this->action=='scenes') {
+    $template_file=DIR_TEMPLATES."scenes.html";
+   }
 
-   $this->data=$out;
-   $p=new parser($template_file, $this->data, $this);
-   return $p->result;
+   if ($this->ajax && $this->action) {
+    global $ajax;
+    $ajax=1;
+    if (file_exists(DIR_MODULES.$this->action)) {
+     include_once(DIR_MODULES.$this->action.'/'.$this->action.'.class.php');
+     $obj="\$object$i";
+     $code="";
+     $code.="$obj=new ".$this->action.";\n";
+     $code.=$obj."->owner=&\$this;\n";
+     $code.=$obj."->getParams();\n";
+     $code.=$obj."->ajax=1;\n";
+     $code.=$obj."->run();\n";
+     StartMeasure("module_".$this->action); 
+     eval($code);
+     endMeasure("module_".$this->action); 
+
+    }
+    return;
+   } else {
+    $this->data=$out;
+    $p=new parser($template_file, $this->data, $this);
+    return $p->result;
+   }
+
 
   }
 

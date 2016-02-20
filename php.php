@@ -1,7 +1,6 @@
-<?
-/*
-* @version 0.1 (auto-set)
-*/
+<?php
 
+/*
+ * @version 0.1 (auto-set)
+ */
  phpinfo();
-?>

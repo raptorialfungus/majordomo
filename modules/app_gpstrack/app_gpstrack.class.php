@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * GPS Track 
 *
@@ -291,6 +291,7 @@ function usual(&$out) {
  function delete_gpsdevices($id) {
   $rec=SQLSelectOne("SELECT * FROM gpsdevices WHERE ID='$id'");
   // some action for related tables
+  SQLExec("DELETE FROM gpslog WHERE DEVICE_ID='".$rec['ID']."'");
   SQLExec("DELETE FROM gpsdevices WHERE ID='".$rec['ID']."'");
  }
 /**
@@ -350,7 +351,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 gpslog - Log
 gpslocations - Locations
@@ -371,6 +372,8 @@ gpsactions - Actions
  gpslog: DEVICE_ID int(10) NOT NULL DEFAULT '0'
  gpslog: LOCATION_ID int(10) NOT NULL DEFAULT '0'
  gpslog: ACCURACY float DEFAULT '0' NOT NULL
+ gpslog: INDEX (DEVICE_ID)
+ gpslog: INDEX (LOCATION_ID)
 
  gpslocations: ID int(10) unsigned NOT NULL auto_increment
  gpslocations: TITLE varchar(255) NOT NULL DEFAULT ''
@@ -378,6 +381,7 @@ gpsactions - Actions
  gpslocations: LON float DEFAULT '0' NOT NULL
  gpslocations: RANGE float DEFAULT '0' NOT NULL
  gpslocations: VIRTUAL_USER_ID int(10) NOT NULL DEFAULT '0'
+ gpslocations: IS_HOME int(3) NOT NULL DEFAULT '0'
 
  gpsdevices: ID int(10) unsigned NOT NULL auto_increment
  gpsdevices: TITLE varchar(255) NOT NULL DEFAULT ''
@@ -386,6 +390,9 @@ gpsactions - Actions
  gpsdevices: LON varchar(255) NOT NULL DEFAULT ''
  gpsdevices: UPDATED datetime
  gpsdevices: DEVICEID varchar(255) NOT NULL DEFAULT ''
+ gpsdevices: TOKEN varchar(255) NOT NULL DEFAULT ''
+ gpsdevices: HOME_DISTANCE int(10) NOT NULL DEFAULT '0'
+ gpsdevices: INDEX (USER_ID)
 
  gpsactions: ID int(10) unsigned NOT NULL auto_increment
  gpsactions: LOCATION_ID int(10) NOT NULL DEFAULT '0'
@@ -395,6 +402,8 @@ gpsactions - Actions
  gpsactions: CODE text
  gpsactions: LOG text
  gpsactions: EXECUTED datetime
+ gpsactions: INDEX (LOCATION_ID)
+ gpsactions: INDEX (USER_ID)
 EOD;
   parent::dbInstall($data);
  }

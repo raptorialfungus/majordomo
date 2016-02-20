@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Thumbnail builder
 *
@@ -32,16 +32,57 @@ function run() {
   // $this->src=preg_replace('/\/~(.+?)\//', '/', $this->src);
   //}
 
+
+  if ($this->live) {
+   $out['LIVE']=$this->live;
+  }
+
+  if ($this->userpassword) {
+   $this->userpassword=processTitle($this->userpassword);
+   $tmp=explode(':', $this->userpassword);
+   $this->username=$tmp[0];
+   $this->password=$tmp[1];
+  }
+
+  if ($this->url) {
+   $this->url=processTitle($this->url);
+   $this->username=processTitle($this->username);
+   $this->password=processTitle($this->password);
+
+   $filename='thumb_'.md5($this->url).basename(preg_replace('/\W/', '', $this->url));
+   if (preg_match('/\.cgi$/is', $filename)) {
+    $filename=str_replace('.cgi', '.jpg', $filename);
+   }
+
+   $this->src=ROOT.'cached/'.$filename;
+
+   /*
+   */
+
+   $this->src_def=urlencode('/cached/'.$filename);
+
+  } else {
+
+   preg_match('/(.*)?\/.*$/',$_SERVER['PHP_SELF'],$match);
+   $this->src_def=urlencode('http://'.$_SERVER['SERVER_NAME'].$match[1].$this->src);
+
+  }
+
   $out['REQUESTED']=$this->src;
 
-  preg_match('/(.*)?\/.*$/',$_SERVER['PHP_SELF'],$match);
-  $this->src_def=urlencode('http://'.$_SERVER['SERVER_NAME'].$match[1].$this->src);
 
 
-  if (file_exists($this->src)) {
+
+
+  if (file_exists($this->src) || $this->url) {
    //$lst=GetImageSize($this->src);
    $out['REAL_WIDTH']=$lst[0];
    $out['REAL_HEIGHT']=$lst[1];
+   $out['URL']=base64_encode($this->url);
+
+
+   $out['USERNAME']=urlencode($this->username);
+   $out['PASSWORD']=urlencode($this->password);
    $image_format=$lst[2];
 
    $out['UNIQ']=rand(1, time());
@@ -50,11 +91,14 @@ function run() {
    $out['MAX_HEIGHT']=$this->max_height;
    $out['MAX_WIDTH']=$this->max_width;
    $out['CLOSE']=$this->close;
+   /*
    $out['BGCOLOR']=(($this->bgcolor[0]='#')?substr($this->bgcolor,1):$this->bgcolor);
    $out['COLOR']=(($this->color[0]='#')?substr($this->color,1):$this->color);
+   */
    $out['ENLARGE']=$this->enlarge;
    $out['SRC']=urlencode($this->src);
    $out['SRC_REAL']=$this->src_def;
+   //echo $out['SRC_REAL']."<br>";
   }
 
 

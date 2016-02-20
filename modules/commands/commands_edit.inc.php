@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.3 (auto-set)
 */
@@ -35,8 +35,21 @@
    global $priority;
    $rec['PRIORITY']=$priority;
 
+   global $smart_repeat;
+   $rec['SMART_REPEAT']=(int)$smart_repeat;
+
+
    global $type;
    $rec['TYPE']=$type;
+
+   global $ext_id;
+   $rec['EXT_ID']=(int)$ext_id;
+
+   global $inline;
+   $rec['INLINE']=(int)$inline;
+
+   global $visible_delay;
+   $rec['VISIBLE_DELAY']=(int)$visible_delay;
 
    if ($rec['TYPE']=='plusminus' || $rec['TYPE']=='sliderbox') {
     global $min_value;
@@ -66,7 +79,7 @@
    }
 
 
-  if ($rec['TYPE']=='selectbox' || $rec['TYPE']=='custom') {
+  if ($rec['TYPE']=='selectbox' || $rec['TYPE']=='custom' || $rec['TYPE']=='switch' || $rec['TYPE']=='radiobox') {
    global $data;
    $rec['DATA']=$data;
   } 
@@ -78,20 +91,28 @@ if ($rec['TYPE']=='plusminus'
     || $rec['TYPE']=='switch' 
     || $rec['TYPE']=='custom'
     || $rec['TYPE']=='timebox'
+    || $rec['TYPE']=='datebox'
     || $rec['TYPE']=='textbox'
+    || $rec['TYPE']=='radiobox'
     ) {
     global $cur_value;
         if ($cur_value!='') {
          $rec['CUR_VALUE']=$cur_value;
         }
 
+    $old_linked_object=$rec['LINKED_OBJECT'];
+    $old_linked_property=$rec['LINKED_PROPERTY'];
+
     global $linked_object;
     $rec['LINKED_OBJECT']=trim($linked_object);
     global $linked_property;
     $rec['LINKED_PROPERTY']=trim($linked_property);
 
+    /*
     global $onchange_object;
     $rec['ONCHANGE_OBJECT']=trim($onchange_object);
+    */
+
     global $onchange_method;
     $rec['ONCHANGE_METHOD']=trim($onchange_method);
 
@@ -118,6 +139,9 @@ if ($rec['TYPE']=='plusminus'
 
    global $window;
    $rec['WINDOW']=$window;
+
+   global $sub_preload;
+   $rec['SUB_PRELOAD']=(int)$sub_preload;
 
 
   //updating 'URL' (varchar)
@@ -146,15 +170,34 @@ if ($rec['TYPE']=='plusminus'
     }
     $this->updateTree_commands();
     $out['OK']=1;
+
+    if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
+     addLinkedProperty($rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $this->name);
+    }
+    if ($old_linked_object && $old_linked_object!=$rec['LINKED_OBJECT'] && $old_linked_property && $old_linked_property!=$rec['LINKED_PROPERTY']) {
+     removeLinkedProperty($old_linked_object, $old_linked_property, $this->name);
+    }
+
+
    } else {
     $out['ERR']=1;
    }
   }
   if ($this->tab=='') {
-   if ($rec['SUB_LIST']!='') {
-    $parents=SQLSelect("SELECT ID, TITLE FROM $table_name WHERE ID!='".$rec['ID']."' AND ID NOT IN (".$rec['SUB_LIST'].") ORDER BY TITLE");
-   } else {
-    $parents=SQLSelect("SELECT ID, TITLE FROM $table_name WHERE ID!='".$rec['ID']."' ORDER BY TITLE");
+   //if ($rec['SUB_LIST']!='') {
+   // $parents=SQLSelect("SELECT ID, TITLE, PARENT_ID FROM $table_name WHERE ID!='".$rec['ID']."' AND ID NOT IN (".$rec['SUB_LIST'].") ORDER BY PARENT_ID, TITLE");
+   //} else {
+   $parents=SQLSelect("SELECT ID, TITLE, PARENT_ID FROM $table_name WHERE ID!='".$rec['ID']."' AND EXT_ID=0 ORDER BY PARENT_ID, TITLE");
+   //}
+   $titles=array();
+   foreach($parents as $k=>$v) {
+    $titles[$v['ID']]=$v['TITLE'];
+   }
+   $total=count($parents);
+   for($i=0;$i<$total;$i++) {
+    if ($titles[$parents[$i]['PARENT_ID']]) {
+     $parents[$i]['TITLE']=$titles[$parents[$i]['PARENT_ID']].' &gt; '.$parents[$i]['TITLE'];
+    }
    }
    $out['PARENTS']=$parents;
   }
@@ -165,6 +208,11 @@ if ($rec['TYPE']=='plusminus'
     }
    }
   }
+
+  if ($rec['ONCHANGE_OBJECT'] && !$rec['LINKED_OBJECT']) {
+   $rec['LINKED_OBJECT']=$rec['ONCHANGE_OBJECT'];
+  }
+
   outHash($rec, $out);
 
   $out['SCRIPTS']=SQLSelect("SELECT ID, TITLE FROM scripts ORDER BY TITLE");

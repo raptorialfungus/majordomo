@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Master Login Setup 
 *
@@ -133,8 +133,9 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
+  SQLExec("UPDATE project_modules SET HIDDEN=1 WHERE NAME LIKE '".$this->name."'");
  }
 // --------------------------------------------------------------------
 }

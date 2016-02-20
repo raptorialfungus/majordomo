@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Users 
 *
@@ -141,7 +141,15 @@ function admin(&$out) {
 * @access public
 */
 function usual(&$out) {
- $this->admin($out);
+ global $session;
+ $users=SQLSelect("SELECT * FROM users ORDER BY NAME");
+ $total=count($users);
+ for($i=0;$i<$total;$i++) {
+  if ($users[$i]['ID']==$session->data['SITE_USER_ID']) {
+   $users[$i]['SELECTED']=1;
+  }
+ }
+ $out['USERS']=$users;
 }
 /**
 * users search
@@ -176,8 +184,8 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
  }
 /**
 * Uninstall
@@ -197,7 +205,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 users - Users
 */
@@ -207,7 +215,18 @@ users - Users
  users: NAME varchar(255) NOT NULL DEFAULT ''
  users: SKYPE varchar(255) NOT NULL DEFAULT ''
  users: MOBILE varchar(255) NOT NULL DEFAULT ''
+ users: AVATAR varchar(255) NOT NULL DEFAULT ''
+ users: LINKED_OBJECT varchar(255) NOT NULL DEFAULT ''
+ users: PASSWORD varchar(255) NOT NULL DEFAULT ''
+ users: IS_ADMIN tinyint(3) NOT NULL DEFAULT '0'
+ users: IS_DEFAULT tinyint(3) NOT NULL DEFAULT '0'
+ users: HOST varchar(255) NOT NULL DEFAULT ''
  users: EMAIL char(255) NOT NULL DEFAULT ''
+ users: ACTIVE_CONTEXT_ID int(10) NOT NULL DEFAULT '0'
+ users: ACTIVE_CONTEXT_EXTERNAL int(3) NOT NULL DEFAULT '0'
+ users: ACTIVE_CONTEXT_UPDATED datetime
+ users: ACTIVE_CONTEXT_HISTORY text
+ users: COLOR char(20) NOT NULL DEFAULT ''
 EOD;
   parent::dbInstall($data);
  }

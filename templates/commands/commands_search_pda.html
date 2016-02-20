@@ -3,15 +3,22 @@
 #-->
         <div id="home" class="current">
 [#if ONE_ITEM_MODE!="1"#]
-            <div data-role="header" data-theme="[#if "<#SETTINGS_THEME#>"=="dark"#]a[#else#]c[#endif#]">
+
+[#if PARENT_TITLE!=""#]
+            <div data-role="header"[#if "<#SETTINGS_THEME#>"=="dark"#] data-theme="b"[#endif#]>
+[#if IFRAME_MODE!="1"#]            
                 <h1 id="label_[#PARENT_ID#]">[#if PARENT_TITLE!=""#][#PARENT_TITLE#][#else#]MajorDoMo[#endif#]</h1>
+
                 [#if PARENT_ID!=""#]
-                <a class="back" href="[#if PARENT_PARENT_ID!="0"#]/menu/[#PARENT_PARENT_ID#][#else#]/menu[#endif#].html"><#LANG_BACK#></a>
+                <a class="back" href="[#if PARENT_PARENT_ID!="0"#]<#ROOTHTML#>menu/[#PARENT_PARENT_ID#][#else#]<#ROOTHTML#>menu[#endif#].html"><#LANG_BACK#></a>
                 [#endif#]
                 <!--#
                 <a class="button slideup" id="infoButton" href="#about">info</a>
                 #-->
+[#endif IFRAME_MODE#]
             </div>
+[#endif PARENT_TITLE#]
+
 
 [#if PARENT_ID!=""#]
 [#if PARENT_AUTO_UPDATE!="0"#]
@@ -19,12 +26,15 @@
  var label[#PARENT_ID#]_timer;
  function updateLabel[#PARENT_ID#]_Ready(id, data) {
   var elem=document.getElementById('label_[#PARENT_ID#]');
-  elem.innerHTML=data;
+  var obj=jQuery.parseJSON(data);
+  if (obj.DATA!='') {
+   elem.innerHTML=obj.DATA;
+  }
   return false;
  }
  function updateLabel[#PARENT_ID#]() {
   clearTimeout(label[#PARENT_ID#]_timer);
-  var url="?ajax=1&op=get_label";
+  var url="<#ROOTHTML#>ajax/commands.html?op=get_label";
   AJAXRequest(url+'&item_id=[#PARENT_ID#]', 'updateLabel[#PARENT_ID#]_Ready', '');
   label[#PARENT_ID#]_timer=setTimeout('updateLabel[#PARENT_ID#]()', ([#PARENT_AUTO_UPDATE#]*1000));
   return false;
@@ -38,6 +48,13 @@
 
 <div data-role="content">
 
+<!--#
+<li>
+<div id="debugField" style="white-space:normal;">...</div>
+</li>
+#-->
+
+
 [#if RESULT#]
 
 <!-- search results (list) -->
@@ -45,59 +62,85 @@
 <ul data-role="listview" data-inset="true">
 [#endif ONE_ITEM_MODE#]
 
+
+[#if RESULT_HTML!=""#][#RESULT_HTML#][#endif#]
+
 [#begin RESULT#]
 
-[#if TYPE=="" || TYPE=="command" || TYPE=="window" || TYPE=="url"#]
-<li>
-<a
- [#if !RESULT#]
- href="#" 
- onClick="return menuClicked('[#ID#]', '[#PARENT_ID#]', '[#SUB_LIST#]', '[#WINDOW#]', '[#TITLE#]', '[#COMMAND#]', '[#URL#]'[#if TYPE="window"#], '[#WIDTH#]', '[#HEIGHT#]'[#else#],0,0[#endif TYPE#]);"
- [#else RESULT#]
- href="/menu/[#ID#].html"
- [#endif RESULT#]
->
-<!--#[#if ICON!=""#]<img src="/cms/icons/[#ICON#]" alt="" class="ui-li-icon">[#endif#]#-->
-<span id="label_[#ID#]">[#TITLE#]</span></a>
-[#if RESULT#]
-<span class="ui-li-count">[#RESULT#]</span>
-[#endif#]
+[#if SUB_PRELOAD="1"#]
 
+ <div data-role="collapsible" data-iconpos="right">
+  
+  <h2><span  id="label_[#ID#]">[#if ICON!=""#]<img src="<#ROOTHTML#>cms/icons/[#ICON#]" alt="" style="margin-right:10px;top:0.4em;max-height:32px;max-width:32px;height:32px;width:32px;vertical-align:middle;">[#endif#][#TITLE#]</span></h2>
+  <ul data-role="listview" data-inset="true">
+  [#tree RESULT#]
+  </ul>
+ </div>
+
+[#else SUB_PRELOAD#]
+[#if TYPE=="" || TYPE=="command" || TYPE=="window" || TYPE=="url"#]
+<li[#if VISIBLE_DELAY!="0"#] class='visible_delay'[#endif#] id='item[#ID#]'>
+<a
+ [#if !RESULT_TOTAL#]
+ href="#" 
+ onClick="return menuClicked('[#ID#]', '[#PARENT_ID#]', '[#SUB_LIST#]', '[#WINDOW#]', '[#TITLE_SAFE#]', '[#COMMAND#]', '[#URL#]'[#if TYPE="window"#], '[#WIDTH#]', '[#HEIGHT#]'[#else#],0,0[#endif TYPE#]);"
+ [#else RESULT_TOTAL#]
+ href="<#ROOTHTML#>menu/[#ID#].html"
+ [#endif RESULT_TOTAL#]
+ [#if SUB_PRELOAD="1"#] onClick="$('#sublist[#ID#]').toggle();return false;"[#endif#]
+>
+[#if ICON!=""#]<img src="<#ROOTHTML#>cms/icons/[#ICON#]" alt="" class="ui-li-icon" style="left:4px;top:0.4em;max-height:32px;max-width:32px;height:32px;width:32px;">[#endif#]
+<span id="label_[#ID#]">[#TITLE#]</span><!--#[#if RESULT_TOTAL#] <span class="ui-li-count">[#RESULT_TOTAL#]</span>[#endif#]#--></a>
 </li>
 [#endif TYPE#]
 
+[#if TYPE=="urlblank"#]
+<li[#if VISIBLE_DELAY!="0"#] class='visible_delay'[#endif#] id='item[#ID#]'>
+<a
+ [#if !RESULT_TOTAL#]
+ href="[#URL#]" target=_blank
+ [#else RESULT_TOTAL#]
+ href="<#ROOTHTML#>menu/[#ID#].html"
+ [#endif RESULT_TOTAL#]
+>
+[#if ICON!=""#]<img src="<#ROOTHTML#>cms/icons/[#ICON#]" alt="" class="ui-li-icon" style="left:4px;top:0.4em;max-height:32px;max-width:32px;height:32px;width:32px;">[#endif#]
+<span id="label_[#ID#]">[#TITLE#]</span></a>
+</li>
+
+[#endif TYPE#]
+
+[#endif SUB_PRELOAD#]
+
+
+
+
 [#if TYPE=="switch"#]
-<li data-role="fieldcontain">
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 
 <script language="javascript">
  var item[#ID#]_timer=0;
  function changedValue[#ID#]() {
-  clearTimeout(item[#ID#]_timer);
+  if (valueChangedFlag['item[#ID#]']==1) {
+   valueChangedFlag['item[#ID#]']=0;
+   return;
+  }
   var elem=document.getElementById('menu[#ID#]_v');
-  item[#ID#]_timer=setTimeout('itemValueChanged("[#ID#]", "'+elem.value+'")', 500);
+  itemValueChanged("[#ID#]", elem.value);
   return false;
  }
 </script>
 
-
         <label for="menu[#ID#]_v"><span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span></label>
         <select name="menu[#ID#]_v" id="menu[#ID#]_v" data-role="slider"  onChange="changedValue[#ID#]();">
-                <option value="0"[#if CUR_VALUE!="1"#] selected[#endif#]><#LANG_OFF#></option>
-                <option value="1"[#if CUR_VALUE="1"#] selected[#endif#]><#LANG_ON#></option>
+                <option value="[#OFF_VALUE#]"[#if CUR_VALUE!="<#RESULT.ON_VALUE#>"#] selected[#endif#]><#LANG_OFF#></option>
+                <option value="[#ON_VALUE#]"[#if CUR_VALUE=="<#RESULT.ON_VALUE#>"#] selected[#endif#]><#LANG_ON#></option>
         </select> 
-
-        <!--#
-<span style="float:right">
-<a href="#" style="display:inline;width:30px;" onClick="return switchValue[#ID#]();"><img src="/img/switch_[#if CUR_VALUE="1"#]on[#else#]off[#endif#].png" id="img[#ID#]" border="0"></a>
-</span>
-<input type="hidden" id="menu[#ID#]_v" name="menu[#ID#]_value" value="[#CUR_VALUE#]">
-#-->
 </li>
 [#endif TYPE#]
 
 [#if TYPE=="custom"#]
-<li data-role="fieldcontain">
-<div id="label_[#ID#]">[#DATA#]</div>
+<li [#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
+<div id="label_[#ID#]" style="white-space:normal">[#DATA#]</div>
 </li>
 [#endif#]
 
@@ -105,13 +148,16 @@
 <script language="javascript">
  var item[#ID#]_timer=0;
  function changedValue[#ID#]() {
-  clearTimeout(item[#ID#]_timer);
+  if (valueChangedFlag['item[#ID#]']==1) {
+   valueChangedFlag['item[#ID#]']=0;
+   return;
+  }
   var elem=document.getElementById('menu[#ID#]_v');
-  item[#ID#]_timer=setTimeout('itemValueChanged("[#ID#]", "'+elem.value+'")', 500);
+  itemValueChanged("[#ID#]", elem.value);
   return false;
  }
 </script>
-<li data-role="fieldcontain">
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 <label for="menu[#ID#]_v" class="select"><span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span></label>
 
 <select name="menu[#ID#]_v" id="menu[#ID#]_v" onChange="changedValue[#ID#]();">
@@ -122,11 +168,50 @@
 </li>
 [#endif TYPE#]
 
+[#if TYPE=="radiobox"#]
+<script language="javascript">
+ var item[#ID#]_timer=0;
+ function changedValue[#ID#](new_value) {
+  if (valueChangedFlag['item[#ID#]']==1) {
+   valueChangedFlag['item[#ID#]']=0;
+   return;
+  }
+  //var elem=document.getElementById('menu[#ID#]_v');
+  itemValueChanged("[#ID#]", new_value);
+  return false;
+ }
+</script>
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
+<label for="menu[#ID#]_v" class="select"><span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span></label>
+
+
+    <fieldset data-role="controlgroup" data-type="horizontal">
+    [#begin OPTIONS#]
+     <input type="radio" name="menu<#RESULT.ID#>_v" class="radiobox<#RESULT.ID#>" id="menu<#RESULT.ID#>_v_[#NUM#]" value="[#VALUE#]" [#if SELECTED#]checked="checked"[#endif SELECTED#]  onClick="changedValue<#RESULT.ID#>('[#VALUE#]');"/>
+     <label for="menu<#RESULT.ID#>_v_[#NUM#]">[#TITLE#]</label>
+     [#end OPTIONS#]
+    </fieldset>
+
+<!--#
+<select name="menu[#ID#]_v" id="menu[#ID#]_v" onChange="changedValue[#ID#]();">
+ [#begin OPTIONS#]
+ <option value="[#VALUE#]"[#if SELECTED#] selected[#endif#]>[#TITLE#]
+ [#end OPTIONS#]
+</select>
+#-->
+</li>
+[#endif TYPE#]
+
+
 
 [#if TYPE=="timebox"#]
 <script language="javascript">
  var item[#ID#]_timer=0;
  function changedValue[#ID#]() {
+  if (valueChangedFlag['item[#ID#]']==1) {
+   valueChangedFlag['item[#ID#]']=0;
+   return;
+  }
   clearTimeout(item[#ID#]_timer);
   var elem1=document.getElementById('menu[#ID#]_v1');
   var elem2=document.getElementById('menu[#ID#]_v2');
@@ -134,7 +219,7 @@
   return false;
  }
 </script>
-<li data-role="fieldcontain">
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 <label for="menu[#ID#]_v" class="select"><span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span></label>
 <fieldset data-role="controlgroup" data-type="horizontal"> 
 <select name="menu[#ID#]_v1" id="menu[#ID#]_v1" onChange="changedValue[#ID#]();">
@@ -148,19 +233,41 @@
  [#end OPTIONS2#]
 </select>
 </fieldset>
-
-
 </li>
 [#endif TYPE#]
+
+
+[#if TYPE=="datebox"#]
+
+<script language="javascript">
+ var item[#ID#]_timer=0;
+ function changedValue[#ID#]_delay() {
+  clearTimeout(item[#ID#]_timer);
+  var elem=document.getElementById('menu[#ID#]_v');
+  item[#ID#]_timer=setTimeout('itemValueChanged("[#ID#]", "'+elem.value+'")', 500);
+  return false;
+ }
+</script>
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
+<span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span>
+
+<div data-inline="true" data-role="fieldcontain">
+ <input type="date" id="menu[#ID#]_v" name="menu[#ID#]_value" value="[#CUR_VALUE#]" data-inline="true" onChange="changedValue[#ID#]_delay()" onKeyUp="changedValue[#ID#]_delay();">
+</div>
+</li>
+[#endif TYPE#]
+
 
 [#if TYPE=="plusminus"#]
 <script language="javascript">
  var item[#ID#]_timer=0;
  function increaseValue[#ID#]() {
   var elem=document.getElementById('menu[#ID#]_v');
-  var v=parseInt(elem.value);
+  var elem2=document.getElementById('menu[#ID#]_vv');
+  var v=parseFloat(elem.value);
   if ((v+[#STEP_VALUE#])<=[#MAX_VALUE#]) {
    elem.value=v+[#STEP_VALUE#];
+   elem2.innerHTML=elem.value;
    clearTimeout(item[#ID#]_timer);
    item[#ID#]_timer=setTimeout('itemValueChanged("[#ID#]", "'+elem.value+'")', 500);
   }
@@ -168,22 +275,27 @@
  }
  function decreaseValue[#ID#]() {
   var elem=document.getElementById('menu[#ID#]_v');
-  var v=parseInt(elem.value);
+  var elem2=document.getElementById('menu[#ID#]_vv');
+  var v=parseFloat(elem.value);
   if ((v-[#STEP_VALUE#])>=[#MIN_VALUE#]) {
    elem.value=v-[#STEP_VALUE#];
+   elem2.innerHTML=elem.value;
    clearTimeout(item[#ID#]_timer);
    item[#ID#]_timer=setTimeout('itemValueChanged("[#ID#]", "'+elem.value+'")', 500);
   }
   return false;
  }
 </script>
-<li data-role="fieldcontain">
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 <span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span>
 
 <div data-inline="true" data-role="fieldcontain">
- <a href="#" data-role="button" onClick="return decreaseValue[#ID#]();" data-inline="true">-</a>
- <input type="text" id="menu[#ID#]_v" name="menu[#ID#]_value" value="[#CUR_VALUE#]" size="5" data-inline="true" style="width:50px">
  <a href="#" data-role="button" onClick="return increaseValue[#ID#]();" data-inline="true">+</a>
+ <span style="margin-left:10px;margin-right:10px" id="menu[#ID#]_vv">[#CUR_VALUE#]</span>
+ <a href="#" data-role="button" onClick="return decreaseValue[#ID#]();" data-inline="true">-</a>
+ <div style="display:none">
+ <input type="text" id="menu[#ID#]_v" name="menu[#ID#]_value" value="[#CUR_VALUE#]" size="5">
+ </div>
 </div>
 </li>
 [#endif TYPE#]
@@ -192,13 +304,17 @@
 <script language="javascript">
  var item[#ID#]_timer=0;
  function changedValue[#ID#]() {
+  if (valueChangedFlag['item[#ID#]']==1) {
+   valueChangedFlag['item[#ID#]']=0;
+   return;
+  }
   clearTimeout(item[#ID#]_timer);
   var elem=document.getElementById('menu[#ID#]_v');
   item[#ID#]_timer=setTimeout('itemValueChanged("[#ID#]", "'+elem.value+'")', 500);
   return false;
  }
 </script>
-<li data-role="fieldcontain">
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 <span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span>
 
 <div data-inline="true" data-role="fieldcontain">
@@ -218,7 +334,7 @@
   return false;
  }
 </script>
-<li data-role="fieldcontain">
+<li data-role="fieldcontain"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 <span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span>
 
 <div data-inline="true" data-role="fieldcontain">
@@ -230,67 +346,131 @@
 
 
 [#if TYPE="label"#]
-<li data-role="list-divider">
+<li data-role="list-divider"[#if VISIBLE_DELAY!="0"#]  class='visible_delay'[#endif#] id='item[#ID#]'>
 <!--#
-[#if ICON!=""#]<img src="/cms/icons/[#ICON#]" border="0">[#endif#]
+[#if ICON!=""#]<img src="<#ROOTHTML#>cms/icons/[#ICON#]" border="0">[#endif#]
 #-->
 <span id="label_[#ID#]">[#TITLE#]</span>
 </li>
 [#endif TYPE#]
 
 [#if TYPE="button"#]
-<a href="#" onClick="return itemValueChanged('[#ID#]', 'clicked');" data-role="button"><span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span></a>
+
+<a href="#" onClick="return itemValueChanged('[#ID#]', 'clicked');" data-role="button" [#if INLINE="1"#]data-inline="true"[#endif#]><span id="label_[#ID#]">[#TITLE#]</span><span id="processing_[#ID#]"></span></a>
 <!--#
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
  <tr>
-  <td><img src="/img/blackBtn_left.png" border="0"></td>
+  <td><img src="<#ROOTHTML#>img/blackBtn_left.png" border="0"></td>
   [#if ICON!=""#]
-  <td background="/img/blackBtn_center.png"><img src="/cms/icons/[#ICON#]" border="0" style="float:left;margin-right:10px;padding:0px"></td>
+  <td background="<#ROOTHTML#>img/blackBtn_center.png"><img src="<#ROOTHTML#>cms/icons/[#ICON#]" border="0" style="float:left;margin-right:10px;padding:0px"></td>
   [#endif#]
-  <td  width="100%" background="/img/blackBtn_center.png">
+  <td  width="100%" background="<#ROOTHTML#>img/blackBtn_center.png">
   <a href="#" onClick="return itemValueChanged('[#ID#]', 'clicked');" style="font-weight:bold" id="label_[#ID#]">[#TITLE#]</a></td>
-  <td><img src="/img/blackBtn_right.png" border="0"></td>
+  <td><img src="<#ROOTHTML#>img/blackBtn_right.png" border="0"></td>
  </tr>
 </table>
 #-->
 [#endif TYPE#]
 
 
+<script language="javascript">
+  valueChangedFlag['item[#ID#]']=0;
+</script>
+
 [#if AUTO_UPDATE!="0"#]
 <script language="javascript">
  var label[#ID#]_timer;
  function updateLabel[#ID#]_Ready(id, data) {
   var elem=document.getElementById('label_[#ID#]');
-  elem.innerHTML=data;
+  var obj=jQuery.parseJSON(data);
+  if (obj.DATA!='') {
+   elem.innerHTML=obj.DATA;
+  }
   return false;
  }
 
  function updateValue[#ID#]_Ready(id, data) {
- [#if TYPE=="textbox"#]
-  if ($('#menu[#ID#]_v').val()!=data) {
-   $('#menu[#ID#]_v').val(data);
-  }
-  [#endif TYPE#]
 
-  [#if TYPE=="switch" || TYPE=="sliderbox"#]
+ var obj=jQuery.parseJSON(data);
+ if (typeof obj.DATA != 'undefined') {
+  data=obj.DATA;
+  [#if TYPE=="textbox"#]
    if ($('#menu[#ID#]_v').val()!=data) {
     $('#menu[#ID#]_v').val(data);
+   }
+  [#endif TYPE#]
+
+  [#if TYPE=="selectbox"#]
+   if ($('#menu[#ID#]_v').val()!=data) {
+    $('#menu[#ID#]_v').val(data);
+    $('#menu[#ID#]_v').selectmenu("refresh");
+   }
+  [#endif#]
+
+  [#if TYPE=="radiobox"#]
+   var $selected = $('.radiobox[#ID#]:checked');
+   if (!$selected.length || $selected.val()!=data) {
+    //alert('zz');
+    //$selected.attr('checked', false).checkboxradio("refresh");
+    $( ".radiobox[#ID#]" ).each(function( index ) {
+     if ($( this ).val()!=data) {
+      //alert('not found: '+$( this ).val()+' != '+data)
+      $( this ).prop('checked', false).checkboxradio("refresh");
+     } else {
+      //alert('found: '+$( this ).val())
+      $( this ).prop('checked', true).checkboxradio("refresh");
+     }
+    });
+    //$(".radiobox[#ID#]").checkboxradio("refresh");
+    //$(".radiobox[#ID#]:first").attr("checked",true).checkboxradio("refresh");
+   }
+   /*
+   if ($('#menu[#ID#]_v').val()!=data) {
+    $('#menu[#ID#]_v').val(data);
+   }
+   */
+  [#endif#]
+
+
+  [#if TYPE=="switch"#]
+   //alert('[#TITLE#]'+"\nValue:"+$('#menu[#ID#]_v').val()+"\nData:"+data);
+   if ($('#menu[#ID#]_v').val()!=data) {
+    if (data=='[#ON_VALUE#]') {
+     $('#menu[#ID#]_v').val('[#ON_VALUE#]');
+    } else {
+     $('#menu[#ID#]_v').val('[#OFF_VALUE#]');
+    }
     $('#menu[#ID#]_v').slider('refresh');
    }
   [#endif TYPE#]
 
+  [#if TYPE=="sliderbox"#]
+   if ($('#menu[#ID#]_v').val()!=data) {
+    $('#menu[#ID#]_v').val(data);
+    valueChangedFlag['item[#ID#]']=1;
+    $('#menu[#ID#]_v').slider('refresh');
+   }
+  [#endif TYPE#]
+  }
   return false;
  }
 
 
  function updateLabel[#ID#]() {
   clearTimeout(label[#ID#]_timer);
-  var url="?ajax=1&op=get_label";
-  AJAXRequest(url+'&item_id=[#ID#]', 'updateLabel[#ID#]_Ready', '');
 
-  [#if TYPE=="switch" || TYPE=="textbox" || TYPE=="sliderbox"#]
+  collectLabel('[#ID#]');
+  /*
+  var url="<#ROOTHTML#>menu.html?ajax=1&op=get_label";
+  AJAXRequest(url+'&item_id=[#ID#]', 'updateLabel[#ID#]_Ready', '');
+  */
+
+  [#if TYPE=="switch" || TYPE=="textbox" || TYPE=="sliderbox" || TYPE=="selectbox" || TYPE=="radiobox"#]
+  /*
   var url2="?ajax=1&op=get_value";
   AJAXRequest(url2+'&item_id=[#ID#]', 'updateValue[#ID#]_Ready', '');
+  */
+  collectValue('[#ID#]');
   [#endif TYPE#]
 
   label[#ID#]_timer=setTimeout('updateLabel[#ID#]()', ([#AUTO_UPDATE#]*1000));
@@ -312,3 +492,44 @@
 [#endif RESULT#]
 
 </div>
+
+[#if VISIBLE_DELAYS#]
+<script language="javascript">
+ var vd_timer;
+ var currentItem=0;
+ var currentNum=0;
+ function visible_delay_carusel() {
+  clearTimeout(vd_timer);
+  var delay=10000;
+  var i=0;
+
+  if (currentItem!=0) {
+   $('#item'+currentItem).hide();
+  }
+  [#begin RESULT#]
+   [#if VISIBLE_DELAY!="0"#]
+    if (currentNum==i) {
+     currentItem=[#ID#];
+     delay=[#VISIBLE_DELAY#]*1000;
+    }
+    i++;
+   [#endif#]
+  [#end RESULT#]
+  currentNum++;
+  if (currentNum>=[#VISIBLE_DELAYS#]) {
+   currentNum=0;
+  }
+  if (currentItem!=0) {
+   $('#item'+currentItem).show();
+  }
+  vd_timer=setTimeout('visible_delay_carusel();', delay)
+  return false;
+ }
+
+ $( document ).bind( "pageinit", function( event, data ){
+    $('.visible_delay').hide();
+    visible_delay_carusel();
+///    alert('zz');
+});
+</script>
+[#endif#]

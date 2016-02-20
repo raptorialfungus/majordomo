@@ -1,6 +1,6 @@
-<?
+<?php
 /**
-* Сохранение 
+* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
 *
 * Saverestore
 *
@@ -34,21 +34,21 @@ function saverestore() {
 *
 * @access public
 */
-function saveParams() {
- $p=array();
+function saveParams($data=1) {
+ $data=array();
  if (IsSet($this->id)) {
-  $p["id"]=$this->id;
+  $data["id"]=$this->id;
  }
  if (IsSet($this->view_mode)) {
-  $p["view_mode"]=$this->view_mode;
+  $data["view_mode"]=$this->view_mode;
  }
  if (IsSet($this->edit_mode)) {
-  $p["edit_mode"]=$this->edit_mode;
+  $data["edit_mode"]=$this->edit_mode;
  }
  if (IsSet($this->tab)) {
-  $p["tab"]=$this->tab;
+  $data["tab"]=$this->tab;
  }
- return parent::saveParams($p);
+ return parent::saveParams($data);
 }
 /**
 * getParams
@@ -136,6 +136,44 @@ function admin(&$out) {
   $out['CLEAR_FIRST']=1;
  }
 
+
+ $this->getConfig();
+
+ $github_feed=getURL('https://github.com/sergejey/majordomo/commits/master.atom', 30*60);
+ if ($github_feed!='') {
+  @$tmp=GetXMLTree($github_feed);
+  @$data=XMLTreeToArray($tmp);
+  @$items=$data['feed']['entry'];
+  if (is_array($items)) {
+   $total=count($items);
+   if ($total) {
+    if ($total>5) {
+     $total=5;
+    }
+    //print_r($items);exit;
+    for($i=0;$i<$total;$i++) {
+     $itm=array();
+     $itm['ID']=trim($items[$i]['id']['textvalue']);
+     $itm['ID']=preg_replace('/.+Commit\//is', '', $itm['ID']);
+     $itm['TITLE']=trim($items[$i]['title']['textvalue']);
+     $itm['AUTHOR']=$items[$i]['author']['name']['textvalue'];
+     $itm['LINK']=$items[$i]['link']['href'];
+     $itm['UPDATED']=strtotime($items[$i]['updated']['textvalue']);
+     $itm['UPDATE_TEXT']=date('m/d/Y H:i', $itm['UPDATED']);
+     $out['UPDATES'][]=$itm;
+    }
+    $out['LATEST_ID']=$out['UPDATES'][0]['ID'];
+    if ($out['LATEST_ID']!='' && $out['LATEST_ID']==$this->config['LATEST_UPDATED_ID']) {
+     $out['NO_NEED_TO_UPDATE']=1;
+    }
+    //print_r($out['UPDATES']);
+    //exit;
+   }
+  }
+ }
+
+
+
  if ($this->mode=='savedetails') {
 
   global $ftp_host;
@@ -212,7 +250,12 @@ function admin(&$out) {
 // }
 
  if ($this->mode=='clear') {
+  set_time_limit(0);
   $this->removeTree(ROOT.'saverestore/temp');
+  global $with_extensions;
+  if ($with_extensions) {
+   $this->redirect("?(panel:{action=market})&md=market&mode=update_all");
+  }
   $this->redirect("?err_msg=".urlencode($err_msg)."&ok_msg=".urlencode($ok_msg));
  }
 
@@ -330,7 +373,8 @@ function admin(&$out) {
     $out['BACKUP']=1;
     $this->dump($out);
     $this->removeTree(ROOT.'saverestore/temp');
-    $this->redirect("?mode=upload&restore=".urlencode('master.tgz')."&folder=".urlencode('majordomo-master'));
+    global $with_extensions;
+    $this->redirect("?mode=upload&restore=".urlencode('master.tgz')."&folder=".urlencode('majordomo-master')."&with_extensions=".$with_extensions);
    } else {
     $this->redirect("?err_msg=".urlencode("Cannot download ".$url));
    }
@@ -430,7 +474,8 @@ function admin(&$out) {
 
 
   if ($result['STATUS']=='OK') {
-   $this->redirect("?mode=clear&ok_msg=".urlencode($ok_msg));
+   global $with_extensions;
+   $this->redirect("?mode=clear&ok_msg=".urlencode($ok_msg)."&with_extensions=".$with_extensions);
   } else {
    $this->redirect("?mode=clear&err_msg=".urlencode($ok_msg));
   }
@@ -1051,11 +1096,10 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
   global $file_name;
   global $folder;
 
-  if (!$folder) {
-   $folder='/.';
-  } else {
-   $folder='/'.$folder;
-  }
+   if (!$folder)
+      $folder = IsWindowsOS() ? '/.' : '/';
+   else 
+      $folder = '/' . $folder;
 
   if ($restore!='') {
    //$file=ROOT.'saverestore/'.$restore;
@@ -1073,82 +1117,42 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
 
        chdir(ROOT.'saverestore/temp');
 
-       if (substr(php_uname(), 0, 7) == "Windows") {
-       // for windows only
-       exec(DOC_ROOT.'/gunzip ../'.$file, $output, $res);
-       exec(DOC_ROOT.'/tar xvf ../'.str_replace('.tgz', '.tar', $file), $output, $res);
-       //@unlink('../'.str_replace('.tgz', '.tar', $file));
-       } else {
-        exec('tar xzvf ../../'.$file, $output, $res);
-       }
-       @unlink(ROOT.'saverestore/temp'.$folder.'/config.php');
+      if (IsWindowsOS())
+      {
+         // for windows only
+         exec(DOC_ROOT.'/gunzip ../'.$file, $output, $res);
+         exec(DOC_ROOT.'/tar xvf ../'.str_replace('.tgz', '.tar', $file), $output, $res);
+         //@unlink('../'.str_replace('.tgz', '.tar', $file));
+      }
+      else
+      {
+         exec('tar xzvf ../'.$file, $output, $res);
+      }
+      
+      @unlink(ROOT.'saverestore/temp'.$folder.'/config.php');
 
        //print_r($output);exit;
 
-       if (1) {
+
 
         chdir('../../');
 
-        if ($this->method=='direct') {
-  
+         $ignores=SQLSelect("SELECT * FROM ignore_updates ORDER BY NAME");
+         $total=count($ignores);
+         for($i=0;$i<$total;$i++) {
+          $name=$ignores[$i]['NAME'];
+          if (is_dir(ROOT.'saverestore/temp/modules/'.$name)) {
+           $this->removeTree(ROOT.'saverestore/temp/modules/'.$name);
+          }
+          if (is_dir(ROOT.'saverestore/temp/templates/'.$name)) {
+           $this->removeTree(ROOT.'saverestore/temp/templates/'.$name);
+          }
+         }
+
          // UPDATING FILES DIRECTLY
          $this->copyTree(ROOT.'saverestore/temp'.$folder, ROOT, 1); // restore all files
 
 
-        } elseif ($this->method=='ftp') {
-
-  // UPDATING FILES BY FTP
-
-
-  $conn_id = @ftp_connect($this->config['FTP_HOST']); 
-  if ($conn_id) {
-
-   $login_result = @ftp_login($conn_id, $this->config['FTP_USERNAME'], $this->config['FTP_PASSWORD']); 
-   if ($login_result) {
-    $systyp=ftp_systype($conn_id);
-      
-      
-
-    if (@ftp_chdir($conn_id, $this->config['FTP_FOLDER'].'saverestore')) {
-     @ftp_chdir($conn_id, $this->config['FTP_FOLDER']);
-     // ok, we're in. updating!
-        $log='';
-        $files=$this->getLocalFilesTree(ROOT.'saverestore/temp'.$folder, '.+', 'installed', $log, 0);
-        $total=count($files);
-        $modules_processed=array();
-        for($i=0;$i<$total;$i++) {
-          $file=$files[$i];
-          $file['REMOTE_FILENAME']=preg_replace('/^'.preg_quote(ROOT.'saverestore/temp/'.$folder, '/').'/is', $this->config['FTP_FOLDER'], $file['FILENAME']);
-          $file['REMOTE_FILENAME']=str_replace('//', '/', $file['REMOTE_FILENAME']);
-          $res_f=$this->ftpput( $conn_id, $file['REMOTE_FILENAME'], $file['FILENAME'], FTP_BINARY);
-
-          if (preg_match('/\.class\.php$/', basename($file['FILENAME'])) && !$modules_processed[dirname($file['REMOTE_FILENAME'])]) {
-           // if this a module then we should update attributes for folder and remove 'installed' file
-           $modules_processed[dirname($file['REMOTE_FILENAME'])]=1;
-           @ftp_site($conn_id,"CHMOD 0777 ".dirname($file['REMOTE_FILENAME']));
-           @ftp_delete($conn_id, dirname($file['REMOTE_FILENAME']).'/installed');
-          }
-        }
-
-
-    } else {
-     $out['FTP_ERR']='Incorrect folder ('.$ftp_folder.')';
-     
-    }
-   } else {
-    $out['FTP_ERR']='Incorrect username/password';
-    
-   }
-
-   ftp_close($conn_id);
-
-  } else {
-   $out['FTP_ERR']='Cannot connect to host ('.$ftp_host.')';
-   $this->redirect("?err_msg=".urlencode($out['FTP_ERR']));
-  }
-
-
-        }
 
         //if (is_dir(ROOT.'saverestore/temp/'.$folder.'modules')) {
         // code restore
@@ -1172,9 +1176,16 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
          $this->restoredatabase(ROOT.'saverestore/temp'.$folder.'/dump.sql');
         }
 
-        $this->redirect("?mode=clear&ok_msg=".urlencode("Updates Installed!"));
+        $this->config['LATEST_UPDATED_ID']=$out['LATEST_ID'];
 
-       }
+        setGlobal('UpdateVersion', $this->config['LATEST_UPDATED_ID']);
+
+        $this->saveConfig();
+
+        global $with_extensions;
+        $this->redirect("?mode=clear&ok_msg=".urlencode("Updates Installed!")."&with_extensions=".$with_extensions);
+
+
   }
 
   /*
@@ -1256,24 +1267,28 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
     //$this->copyTree(ROOT.'photos', ROOT.'saverestore/temp/photos');
    }
 
-
+   
    // packing into tar.gz
-   if (substr(php_uname(), 0, 7) == "Windows") {
-    $tar_name.=date('Y-m-d__h-i-s').'.tar';
-   } else {
-    $tar_name.=date('Y-m-d__h-i-s').'.tgz';
+   $tar_name .= date('Y-m-d__h-i-s');
+   $tar_name .= IsWindowsOS() ? '.tar' : '.tgz';
+   
+   if (isset($out['BACKUP'])) 
+      $tar_name = 'backup_' . $tar_name;
+   
+   if (IsWindowsOS())
+   {
+      exec('tar.exe  --strip-components=2 -cvf ./saverestore/'.$tar_name.' ./saverestore/temp/');
+   }
+   else
+   {
+      chdir(ROOT.'saverestore/temp');
+      exec('tar cvzf ../'.$tar_name.' .');
+      chdir('../../');
    }
 
-   if ($out['BACKUP']) {
-    $tar_name='backup_'.$tar_name;
-   }
-
-   if (substr(php_uname(), 0, 7) == "Windows") {
-    exec('tar.exe  --strip-components=2 -cvf ./saverestore/'.$tar_name.' ./saverestore/temp/');
-   } else {
-    chdir(ROOT.'saverestore/temp');
-    exec('tar cvzf ../'.$tar_name.' .');
-    chdir('../../');
+   if (defined('SETTINGS_BACKUP_PATH') && SETTINGS_BACKUP_PATH!='' && file_exists(ROOT.'saverestore/'.$tar_name)) {
+    $dest=SETTINGS_BACKUP_PATH;
+    @copy(ROOT.'saverestore/'.$tar_name, $dest.$tar_name);
    }
 
 
@@ -1305,6 +1320,7 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
 * @access public
 */
  function backupdatabase($filename) {
+  /*
   global $db;
 
   $tables1 = SQLSelect("SHOW TABLES;");
@@ -1313,8 +1329,6 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
     $tables[]=$v;
    }
   }
-
-
   $ignores=array('statistic', 'pot_accesslog', 'pot_add_data', 'pot_documents', 'pot_exit_targets', 'pot_hostnames', 
                  'pot_operating_systems', 'pot_referers', 'pot_search_engines', 'pot_user_agents', 'pot_visitors');
   for($i=0;$i<count($ignores);$i++) {
@@ -1335,11 +1349,18 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
    }
   }
 
-  //$filename=ROOT.DIR_BACKUP."/".date("M_d_Y_H_i").".sql";
   $fp = fopen ($filename,"w");
   fwrite ($fp,$newfile);
   fclose ($fp);
- }
+  */
+
+   if (defined('PATH_TO_MYSQLDUMP'))
+      $pathToMysqlDump = PATH_TO_MYSQLDUMP;
+   else
+      $pathToMysqlDump = IsWindowsOS() ? SERVER_ROOT . "/server/mysql/bin/mysqldump" : "/usr/bin/mysqldump";
+
+   exec($pathToMysqlDump . " --user=".DB_USER." --password=" . DB_PASSWORD . " --no-create-db --add-drop-table --databases " . DB_NAME . ">" . $filename);
+}
 
 /**
 * removeTree
@@ -1381,6 +1402,10 @@ function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose) {
 
 
   $res=1;
+
+  //Remove last slash '/' in source and destination - slash was added when copy
+  $source = preg_replace("#/$#", "", $source);
+  $destination = preg_replace("#/$#", "", $destination);
 
   if (!Is_Dir($source)) {
    return 0; // cannot create destination path
@@ -1494,19 +1519,28 @@ function ftpget($conn_id, $local_file, $remote_file, $mode) {
  return $res;
 }
 
-function ftpmkdir($conn_id, $ftp_dir) {
- global $set_dirs;
- $tmp=explode('/', $ftp_dir);
- $res_dir=$tmp[0];
- for($i=1;$i<count($tmp);$i++) {
-  $res_dir.='/'.$tmp[$i];
-  if (!isSet($set_dirs[$res_dir])) {
-   $set_dirs[$res_dir]=1;
-   if (! @ftp_chdir($conn_id, $res_dir)) {
-    ftp_mkdir($conn_id,$res_dir) ;
+function ftpmkdir($conn_id, $ftp_dir)
+{
+   global $set_dirs;
+
+   $tmp     = explode('/', $ftp_dir);
+   $res_dir = $tmp[0];
+   $tmpCnt  = count($tmp);
+   
+   for ($i = 1; $i < $tmpCnt; $i++)
+   {
+      $res_dir .= '/' . $tmp[$i];
+  
+      if (!isset($set_dirs[$res_dir]))
+      {
+         $set_dirs[$res_dir] = 1;
+   
+         if (!@ftp_chdir($conn_id, $res_dir))
+         {
+            ftp_mkdir($conn_id,$res_dir);
+         }
+      }
    }
-  }
- }
 }
 
 function ftpdelete($conn_id, $filename) {
@@ -1546,11 +1580,11 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
+ function install($parent_name="") {
   if (!Is_Dir(ROOT."./saverestore")) {
    mkdir(ROOT."./saverestore", 0777);
   }
-  parent::install();
+  parent::install($parent_name);
  }
 // --------------------------------------------------------------------
 }

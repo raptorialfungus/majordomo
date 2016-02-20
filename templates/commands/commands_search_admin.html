@@ -3,11 +3,13 @@
 #-->
 
 <script language="javascript">
+
 $(function () {
+
+
         $("a.show-hide-link").click(function() {
                 var id = $(this).data('id');//'#sub' + 
                 //$(id).toggle();
-
   if ($('#sub'+id).is(":visible")) {
    $('#sub'+id).hide();
    $('#link'+id).html(' + ');
@@ -17,14 +19,18 @@ $(function () {
    $('#sub'+id).show();
    $('#link'+id).html(' - ');
   }
+  return false;
 
 
         });
+
 });
+
+
 </script>
 
-<h3><#LANG_MODULE_CONTROL_MENU#></h3>
-<a href="?view_mode=edit_commands" class="btn btn-success"><i class="icon-white icon-plus-sign"></i> <#LANG_ADD_NEW_SECTION#></a>
+<div><a href="?view_mode=edit_commands" class="btn btn-default"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_SECTION#></a></div>
+&nbsp;
 
 <!-- results -->
 [#if RESULT#]
@@ -35,18 +41,25 @@ $(function () {
 <tr>
  <td>
    [#if RESULT#]
-   <a href="#" id="link[#ID#]" class="show-hide-link btn btn-mini expand" data-id="[#ID#]"> + </a>
+   <a href="#" id="link[#ID#]" class="show-hide-link btn btn-default btn-sm expand" data-id="[#ID#]"> + </a>
    [#endif#]
-   [#if ICON!=""#]<img src="/cms/icons/[#ICON#]" class="action-list-icon" align="absmiddle">[#endif#]
+   [#if ICON!=""#]<img src="<#ROOTHTML#>cms/icons/[#ICON#]" class="action-list-icon" align="absmiddle">[#endif#]
    <a href="?view_mode=edit_commands&id=[#ID#]">[#TITLE#]</a>
    <span class="divider">/</span>
    [#if TYPE!=""#][#TYPE#]<span class="divider">/</span>[#endif TYPE#]
   [#PRIORITY#]
  </td>
  <td class="command-actions">
+  <a href="?view_mode=moveup&id=[#ID#]" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-arrow-up"></i></a>
+  <a href="?view_mode=movedown&id=[#ID#]" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-arrow-down"></i></a>
+  [#if EXT_ID="0"#]
+  <!--#
   <a href="?view_mode=edit_commands&parent_id=[#ID#]"><#LANG_EXPAND#></a>
+  #-->
+  [#endif EXT_ID#]
+  <a href="?view_mode=edit_commands&id=[#ID#]" title="<#LANG_EDIT#>" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-pencil"></i></a>
   [#if !RESULT#]
-    <a href="?view_mode=delete_commands&id=[#ID#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><#LANG_DELETE#></a>
+    <a href="?view_mode=delete_commands&id=[#ID#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" title="<#LANG_DELETE#>" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-remove"></i></a>
   [#endif RESULT#]
 </tr>
 [#if RESULT#]

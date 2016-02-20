@@ -4,7 +4,7 @@
 */
 
 define ("SERIAL_DEVICE_NOTSET", 0);
-define ("SERIAL_DEVICE_SET", 1);
+define ("SERIAL_DEVICE_SET",    1);
 define ("SERIAL_DEVICE_OPENED", 2);
 
 /**
@@ -20,12 +20,12 @@ define ("SERIAL_DEVICE_OPENED", 2);
  */
 class phpSerial
 {
-	var $_device = null;
+	var $_device    = null;
 	var $_windevice = null;
-	var $_dHandle = null;
-	var $_dState = SERIAL_DEVICE_NOTSET;
-	var $_buffer = "";
-	var $_os = "";
+	var $_dHandle   = null;
+	var $_dState    = SERIAL_DEVICE_NOTSET;
+	var $_buffer    = "";
+	var $_os        = "";
 
 	/**
 	 * This var says if buffer should be flushed by sendMessage (true) or manualy (false)
@@ -43,9 +43,9 @@ class phpSerial
 	{
 		setlocale(LC_ALL, "en_US");
 
-		$sysname = php_uname();
+		$isWindows = IsWindowsOS();
 
-		if (substr($sysname, 0, 5) === "Linux")
+		if (!$isWindows)
 		{
 			$this->_os = "linux";
 
@@ -58,7 +58,7 @@ class phpSerial
 				trigger_error("No stty availible, unable to run.", E_USER_ERROR);
 			}
 		}
-		elseif(substr($sysname, 0, 7) === "Windows")
+		elseif($isWindows)
 		{
 			$this->_os = "windows";
 			register_shutdown_function(array($this, "deviceClose"));
@@ -106,8 +106,8 @@ class phpSerial
 				if (preg_match("@^COM(\d+):?$@i", $device, $matches) and $this->_exec(exec("mode " . $device)) === 0)
 				{
 					$this->_windevice = "COM" . $matches[1];
-					$this->_device = "\\.\com" . $matches[1];
-					$this->_dState = SERIAL_DEVICE_SET;
+					$this->_device    = "\\.\com" . $matches[1];
+					$this->_dState    = SERIAL_DEVICE_SET;
 					return true;
 				}
 			}
@@ -177,7 +177,7 @@ class phpSerial
 		if (fclose($this->_dHandle))
 		{
 			$this->_dHandle = null;
-			$this->_dState = SERIAL_DEVICE_SET;
+			$this->_dState  = SERIAL_DEVICE_SET;
 			return true;
 		}
 
@@ -585,4 +585,5 @@ class phpSerial
 	// INTERNAL TOOLKIT -- {STOP}
 	//
 }
+
 ?>

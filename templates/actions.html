@@ -34,6 +34,10 @@
  [#inc default.html#]
 [#endif#]
 
+[#if ACTION="pages"#]
+ [#inc pages.html#]
+[#endif#]
+
 
 [#if APP_ACTION#]
  [#module name="<#ACTION#>" action=""#]
@@ -65,6 +69,10 @@
 
 [#if ACTION="products"#]
  [#module name="products" action=""#]
+[#endif#]
+
+[#if ACTION="users"#]
+ [#module name="users" action=""#]
 [#endif#]
 
 [#if ACTION="chat"#]

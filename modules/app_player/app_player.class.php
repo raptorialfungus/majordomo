@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Media Player Application
 *
@@ -29,7 +29,7 @@ function app_player() {
 *
 * @access public
 */
-function saveParams() {
+function saveParams($data=1) {
  $p=array();
  if (IsSet($this->id)) {
   $p["id"]=$this->id;
@@ -135,19 +135,13 @@ function admin(&$out) {
 * @access public
 */
 function usual(&$out) {
- /*
- $this->getConfig();
- if ($this->config['ENABLED'] && $_SERVER['REQUEST_URI']=='/') {
-  echo "<html><head><title>".SETTINGS_SITE_TITLE."</title><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><link href=\"/stl.css\" rel=\"stylesheet\" type=\"text/css\"/></head><body>".$this->config['CONTENT']."</body></html>";
-  exit;
- }
- */
  global $play;
  global $rnd;
  global $rnd;
  global $session;
  global $play_terminal;
  global $terminal_id;
+ global $volume;
 
 
  if ($this->play) {
@@ -183,6 +177,7 @@ function usual(&$out) {
 
  if (!$play && $session->data['LAST_PLAY']) {
   $play=$session->data['LAST_PLAY'];
+  $out['LAST_PLAY']=1;
  } elseif ($play) {
   $session->data['LAST_PLAY']=$play;
  }
@@ -195,6 +190,17 @@ function usual(&$out) {
   $out['RND']=$rnd;
  }
 
+ $current_level=getGlobal('ThisComputer.volumeLevel');
+ for($i=0;$i<=100;$i+=5) {
+  $rec=array('VALUE'=>$i);
+  if ($i==$current_level) {
+   $rec['SELECTED']=1;
+  }
+  $out['VOLUMES'][]=$rec;
+ }
+
+
+
  global $ajax;
  if ($ajax!='') {
   global $command;
@@ -205,7 +211,7 @@ function usual(&$out) {
    $ch = curl_init();
    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-   if ($terminal['PLAYER_USERNAME'] && $terminal['PLAYER_PASSWORD']) {
+   if ($terminal['PLAYER_USERNAME'] || $terminal['PLAYER_PASSWORD']) {
     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC ) ;
     curl_setopt($ch, CURLOPT_USERPWD, $terminal['PLAYER_USERNAME'].':'.$terminal['PLAYER_PASSWORD']);
    }
@@ -220,11 +226,18 @@ function usual(&$out) {
 
     if ($terminal['PLAYER_TYPE']=='vlc' || $terminal['PLAYER_TYPE']=='') {
 
+      $terminal['PLAYER_PORT']='80';
+
       if ($command=='refresh') {
        $out['PLAY']=preg_replace('/\\\\$/is', '', $out['PLAY']);
        $out['PLAY']=preg_replace('/\/$/is', '', $out['PLAY']);
-       $path=urlencode(''.str_replace('/', "\\", ($out['PLAY'])));
+       if (preg_match('/^http/', $out['PLAY'])) {
+        $path=urlencode($out['PLAY']);
+       } else {
+        $path=urlencode(''.str_replace('/', "\\", ($out['PLAY'])));
+       }
        curl_setopt($ch, CURLOPT_URL, "http://".$terminal['HOST'].":".$terminal['PLAYER_PORT']."/rc/?command=vlc_play&param=".$path);
+       //echo $path;exit;
        $res=curl_exec($ch);
       }
 
@@ -253,11 +266,21 @@ function usual(&$out) {
        curl_setopt($ch, CURLOPT_URL, "http://".$terminal['HOST'].":".$terminal['PLAYER_PORT']."/rc/?command=vlc_close");
        $res=curl_exec($ch);
       }
+
+     if ($command=='volume') {
+       setGlobal('ThisComputer.volumeLevel', $volume);
+       callMethod('ThisComputer.VolumeLevelChanged', array('VALUE'=>$volume, 'HOST'=>$terminal['HOST']));
+      }
+
    } elseif ($terminal['PLAYER_TYPE']=='xbmc') {
     include(DIR_MODULES.'app_player/xbmc.php');
 
    } elseif ($terminal['PLAYER_TYPE']=='foobar') {
     include(DIR_MODULES.'app_player/foobar.php');
+   } elseif ($terminal['PLAYER_TYPE']=='vlcweb') {
+    include(DIR_MODULES.'app_player/vlcweb.php');
+   } elseif ($terminal['PLAYER_TYPE']=='mpd') {
+    include(DIR_MODULES.'app_player/mpd.php');
    }
 
    // close cURL resource, and free up system resources
@@ -272,8 +295,10 @@ function usual(&$out) {
     echo " on ".$session->data['PLAY_TERMINAL'].' ';
    }
 
-
-   echo "OK (".$res.")";
+   echo "OK";
+   if ($res) {
+    echo " (".$res.")";
+   }
    $session->save();
    exit;
   }
@@ -304,8 +329,8 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
  }
 // --------------------------------------------------------------------
 }

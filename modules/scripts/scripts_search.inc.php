@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.1 (wizard)
 */
@@ -48,6 +48,7 @@
     if (!$res[$i]['CATEGORY']) {
      $res[$i]['CATEGORY']=LANG_OTHER;
     }
+    $res[$i]['DESCRIPTION']=nl2br(htmlspecialchars($res[$i]['DESCRIPTION']));
 
     if ($res[$i]['CATEGORY']!=$old_category) {
      $out['TOTAL_CATEGORIES']++;
@@ -59,6 +60,7 @@
     }
 
    }
+   $res[0]['FIRST']=1;
    $out['RESULT']=$res;
   }
 

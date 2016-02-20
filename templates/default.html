@@ -1,16 +1,35 @@
 <!--#
  @version 0.2 (auto-set)
 #-->
+<script type="text/javascript" src="<#ROOTHTML#>js/ui.tabs.paging.js"></script>
+
 <table width="100%" border="0">
  <tr>
-  <td valign="top" colspan=2>
+  <td valign="top" colspan=3>
   
-<table border="0" align="right">
+<table border="0" align="right" width="100%">
  
  <tr>
         <td>
-                <a href="/"><img src="/img/icons/home.png" border="0"></a>
+                <a href="<#ROOTHTML#>"><img src="<#ROOTHTML#>img/icons/home.png" border="0"></a>
                 </td>
+
+                <td valign="bottom">
+<script language="javascript">
+ function leftPanelToggle() {
+  $('#leftPanel').toggle();
+  if ( $("#leftPanel").is(":visible") ) {
+   $("#leftPanelToggleIcon").attr("src","<#ROOTHTML#>img/icons/application-side-contract-icon.png");
+  } else { 
+   $("#leftPanelToggleIcon").attr("src","<#ROOTHTML#>img/icons/application-side-expand-icon.png");
+  }
+  return false;
+ }
+</script>
+                <a href="#" onClick="return leftPanelToggle();"><img id="leftPanelToggleIcon" border="0" src="<#ROOTHTML#>img/icons/application-side-contract-icon.png" border="0"></a>
+                </td>
+
+
                                 <td width="90%" align="right">
                                 <!--#[#inc vlc_object.html#]#-->
                                 [#module name="app_player"#]
@@ -25,12 +44,12 @@
 
   <table border="0" align="right">
    <tr>
-    <td valign="top" nowrap>[ <a href="/admin.php"><#LANG_CONTROL_PANEL#></a> ]</td>
-  <form action="/" method="get" name="frmSettings">
+    <td nowrap><a href="<#ROOTHTML#>admin.php" class="btn btn-default"><#LANG_CONTROL_PANEL#></a></td>
+  <form action="<#ROOTHTML#>" method="get" name="frmSettings">
   [#if HIDE_TERMINALS!="1"#]
   <td valign="top" nowrap>
    <#LANG_TERMINAL#>:
-   <select name="terminal" onChange="document.frmSettings.submit();">
+   <select name="terminal" onChange="document.frmSettings.submit();"  class="form-control input-sm">
     <option value=""><#LANG_SELECT#>
     [#begin TERMINALS#]
     <option value="[#NAME#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]
@@ -38,6 +57,7 @@
    </select>
   </td>
   [#endif#]
+  <!--#
   [#if HIDE_USERS!="1"#]
   <td valign="top" nowrap>
    <#LANG_USER#>:
@@ -49,18 +69,25 @@
    </select>
   </td>
   [#endif#]
+  #-->
   </form>
    </tr>
+   <!--#
    <tr>
     <td valign="top" colspan="3" align="right" nowrap>
     <a href="<#LANG_WIKI_URL#>" target=_blank>MajorDoMo Project</a>
-    |
-    <a href="/popup/xray.html" target=_blank>X-Ray</a>
+    <a href="<#ROOTHTML#>popup/xray.html" target=_blank>X-Ray</a>
     </td>
    </tr>
+   #-->
   </table>
-
-
+  </td>
+  <td valign="top">
+   [#if USER_AVATAR!=""#]
+   <a href="#" onClick="return openModalTWindow('usersWindow', '<#LANG_USERS#>', '/popup/users.html', 500, 500);" title="[#USER_TITLE#]"><img src="<#ROOTHTML#>cms/avatars/[#USER_AVATAR#]" border="0" height="50" alt="[#USER_TITLE#]"></a>
+   [#else#]
+   <a href="#" onClick="return openModalTWindow('usersWindow', '<#LANG_USERS#>', '/popup/users.html', 500, 500);" title="[#USER_TITLE#]"><img src="<#ROOTHTML#>img/icons/user.png" border="0" alt="[#USER_TITLE#]"></a>
+   [#endif#]
   </td>
  </tr>
  <tr>
@@ -73,23 +100,24 @@
   </td>
  </tr>
  <tr>
-  <td valign="top" width="350">
-  <iframe src="/menu.html" width="350" height="450" id="navFrame" border="0" frameborder=0 framespacing=0></iframe>
-  <!--#<iframe src="/demos/main/index.html" width="350" height="400" border="0" frameborder=0 framespacing=0 scrolling="auto"></iframe>#-->
+  <td valign="top" width="350" id="leftPanel">
+  <iframe src="<#ROOTHTML#>menu.html" width="350" height="450" id="navFrame" border="0" frameborder=0 framespacing=0></iframe>
+  <!--#<iframe src="<#ROOTHTML#>demos/main/index.html" width="350" height="400" border="0" frameborder=0 framespacing=0 scrolling="auto"></iframe>#-->
   <!--#
-  <img src="/img/0.gif" border="0" width="300" height="1">
+  <img src="<#ROOTHTML#>img/0.gif" border="0" width="300" height="1">
   <div id="alertsLog" class="small">
    [#module name="shoutbox" limit="5"#]
   </div>
   #-->
   </td>
+
   <td valign="top" width="100%">
 
 <div id="tabs">
-
 <ul>
 [#begin LAYOUTS#]
-<li><a href="#tabs-[#ID#]">[#TITLE#]</a></li>
+<li>
+<a href="#tabs-[#ID#]"[#if ICON!=""#] style="padding:1px 1em 2px 0.5em"[#endif#]>[#if ICON!=""#]<img src="<#ROOTHTML#>cms/layouts/[#ICON#]" align="absmiddle" height="28">&nbsp;&nbsp;[#endif#][#TITLE#]</a></li>
 [#end LAYOUTS#]
   <li><a href="#tabs-last"><span id='tablast_title'>***</span></a></li>
 </ul>
@@ -123,6 +151,11 @@ $(document).ready(function() {
   //alert($('#defaultFrame').height());
 });
 
+[#begin LAYOUTS#]
+var layoutTimer[#ID#];
+[#end LAYOUTS#]
+
+
         $("#tabs").tabs({
         show: function(event, ui) { 
          iFrameHeight=$(document).height()-110;
@@ -130,9 +163,10 @@ $(document).ready(function() {
          //alert(selected);
          [#begin LAYOUTS#]
          if (selected == [#NUM#]) {
+          clearTimeout(layoutTimer[#ID#]);
           [#if TYPE="app"#]
            if ($('#tabs-[#ID#]').html()=='...') {
-            $('#tabs-[#ID#]').html('<iframe src="/popup/[#APP#].html" width=100% height="'+iFrameHeight+'" border="0" frameborder="0"></iframe>');
+            $('#tabs-[#ID#]').html('<iframe src="<#ROOTHTML#>popup/[#APP#].html" width=100% height="'+iFrameHeight+'" border="0" frameborder="0"></iframe>');
            }
           [#endif TYPE#]
           [#if TYPE="url"#]
@@ -142,12 +176,18 @@ $(document).ready(function() {
           [#endif TYPE#]
           [#if TYPE="html"#]
            if ($('#tabs-[#ID#]').html()=='...') {
-            $('#tabs-[#ID#]').html('<iframe src="/page/[#ID#].html" width=100% height="'+iFrameHeight+'" border="0" frameborder="0"></iframe>');
+            $('#tabs-[#ID#]').html('<iframe src="<#ROOTHTML#>page/[#ID#].html" width=100% height="'+iFrameHeight+'" border="0" frameborder="0"></iframe>');
            }
           [#endif TYPE#]
+         } else {
+          if ($('#tabs-[#ID#]').html()!='...') {
+           clearTimeout(layoutTimer[#ID#]);
+           layoutTimer[#ID#]=setTimeout("$('#tabs-[#ID#]').html('...');", 60*1000);
+          }
          }
          [#end LAYOUTS#]
         }});
+        $('#tabs').tabs('paging', {cycle:false, follow:false});
 
 
 

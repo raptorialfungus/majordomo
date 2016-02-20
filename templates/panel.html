@@ -1,43 +1,73 @@
-<!DOCTYPE html>
 <!--#
- @version 0.2 (auto-set)
-#-->
+ @version 0.4 (auto-set)
+#--><!DOCTYPE html>
 <html>
 <head>
-<title><#SETTINGS_SITE_TITLE#> <#LANG_CONTROL_PANEL#></title>
-<meta name="keywords" content="">
-<meta name="description" content="">
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-[#if PRINT!="1"#]
-<link rel="stylesheet" href="<#ROOTHTML#>bootstrap/css/bootstrap.min.css" type="text/css">
-<link rel="stylesheet" href="<#ROOTHTML#>css/admin.css" type="text/css">
-[#else PRINT#]
-<link rel="stylesheet" href="<#ROOTHTML#>css/admin_print.css" type="text/css">
-[#endif PRINT#]
+        <title><#SETTINGS_SITE_TITLE#> <#LANG_CONTROL_PANEL#></title>
+        <meta name="keywords" content="">
+        <meta name="description" content="">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <link rel="stylesheet" href="<#ROOTHTML#>bootstrap/css/bootstrap.min.css" type="text/css">
 
-  <link rel="stylesheet" href="<#ROOTHTML#>css/jquery.autocomplete.css" type="text/css">
-  <link rel="stylesheet" href="<#ROOTHTML#>css/jquery.fancybox.css" type="text/css">
-  <link rel="stylesheet" href="<#ROOTHTML#>css/jquery.betterTooltip.css" type="text/css">
+        <link rel="stylesheet" href="<#ROOTHTML#>css/admin.css" type="text/css">
+        <link rel="stylesheet" type="text/css" href="<#ROOTHTML#>css/umbra-css2/style.css" title="theme"/>
+        <link rel="stylesheet" href="<#ROOTHTML#>css/jquery.autocomplete.css" type="text/css">
+        <link rel="stylesheet" type="text/css" href="<#ROOTHTML#>js/jquery.fancybox/jquery.fancybox.css?v=2.1.5" media="screen" />
+        <link rel="stylesheet" href="<#ROOTHTML#>css/jquery.betterTooltip.css" type="text/css">
 
 
-[#inc scripts.js#]
-<script language="javascript" src="/js/scripts.js"></script>
-<script language="javascript" src="/js/jquery.js"></script>
-<script language="javascript" src="/js/system.js"></script>
-<script language="javascript" src="/js/admin.js"></script>
+        <script language="javascript" src="<#ROOTHTML#>jquerymobile/jquery-1.10.2.min.js"></script>
 
-  <script type="text/javascript" src="<#ROOTHTML#>bootstrap/js/bootstrap.min.js"></script>
-  <script type="text/javascript" src="<#ROOTHTML#>js/jquery.cookie.js"></script>
-  <script type="text/javascript" src="<#ROOTHTML#>js/jquery.fancybox.js"></script>
-  <script type="text/javascript" src="<#ROOTHTML#>js/jquery.autocomplete.js"></script>
-  <script type="text/javascript" src="<#ROOTHTML#>js/jquery.bgiframe.js"></script>
-  <script type="text/javascript" src="<#ROOTHTML#>js/jquery.betterTooltip.js"></script>
+        <script type="text/javascript" src="<#ROOTHTML#>bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="<#ROOTHTML#>js/jquery.cookie.js"></script>
+        <script type="text/javascript" src="<#ROOTHTML#>js/jquery.fancybox/jquery.fancybox.js"></script>
+        <script type="text/javascript" src="<#ROOTHTML#>js/jquery.autocomplete.js"></script>
+        <script type="text/javascript" src="<#ROOTHTML#>js/jquery.bgiframe.js"></script>
+        <script type="text/javascript" src="<#ROOTHTML#>js/jquery.betterTooltip.js"></script>
+        <script language="javascript" type="text/javascript" src="<#ROOTHTML#>js/jWindow.js"></script>
+
+        <script language="javascript" src="<#ROOTHTML#>js/scripts.js"></script>
+        <script language="javascript" src="<#ROOTHTML#>js/system.js"></script>
+        <script language="javascript" src="<#ROOTHTML#>js/admin.js"></script>
 
 
+        [#inc scripts.js#]
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
 
 </head>
 
-<body>
+<style>
+body {
+/*max-width: 1200px;*/
+margin: 0 auto;
+}
+div#content {
+margin: 0px 10px;
+padding: 20px 40px;
+}
+.clearfix{
+        padding-bottom:5px;
+}
+.navbar-fixed-top .container, .navbar-fixed-bottom .container {
+/*        width: 1100px;*/
+}
+
+
+</style>
+<body bgcolor="#FFFFFF" marginheight="0" marginwidth="0" topmargin="0" leftmargin="0">
+
+<div id="content" class="content">
+
+<script type="text/javascript">
+     function openFileBrowser(id){
+          fileBrowserlink = "<#ROOTHTML#>pdw/index.php?editor=standalone&returnID=" + id;
+          window.open(fileBrowserlink,'pdwfilebrowser', 'width=1000,height=650,scrollbars=no,toolbar=no,location=no');
+     }
+</script>
+
 
 [#if AUTHORIZED#]
 
@@ -65,6 +95,31 @@
           }
          }
 
+ var filterTimer;
+
+
+ function filterSearch() {
+  var title=document.frmFilterModules.filter_modules.value;
+  //$('#filter_add').html(title);
+ var url="?";
+ url+='&ajax_panel=1&op=filter&title='+encodeURIComponent(title);
+
+ $.ajax({
+   url: url
+  }).done(function(data) { 
+   $('#filter_add').html(data);
+  });
+
+
+  return false;
+ }
+
+ function setFilter(value) {
+  $('#filter_modules').val(value);
+  filterSearch();
+  return false;
+ }
+
  function filterModules() {
   var title=document.frmFilterModules.filter_modules.value;
   var moduleTitle='';
@@ -74,6 +129,16 @@
   setCookie('panelFilter', title);
 
   title=title.toLowerCase();
+
+  if (title!='') {
+   $('#filter_add').html('...');
+   $('#filter_add').show();
+   clearTimeout(filterTimer);
+   filterTimer=setTimeout('filterSearch();', 1000);
+  } else {
+   $('#filter_add').hide();
+   clearTimeout(filterTimer);
+  }
 
   var found=0;
   var i=0;
@@ -111,63 +176,127 @@
  }
 </script>
 
+<script language="javascript">
+jQuery.fn.center = function () {
+    this.css("position","absolute");
+    this.css("top", ( $(window).height() - this.height() ) / 2+$(window).scrollTop() + "px");
+    this.css("left", ( $(window).width() - this.width() ) / 2+$(window).scrollLeft() + "px");
+    return this;
+}
+
+ // ----------------------------------------------------------------------
+ function openTWindow(winId, winTitle, pageURL, wdth, hdth) {
+  var jWindowObj = $.jWindow({ id: winId, title: winTitle, posx: 200, posy: 100, width: wdth, height: hdth, type: 'iframe', url: pageURL, modal: false });
+  jWindowObj.show();
+  jWindowObj.update();
+  $('#usersWindow').center();
+  return false;
+ }
+
+
+ function openModalTWindow(winId, winTitle, pageURL, wdth, hdth) {
+  var jWindowObj = $.jWindow({ id: winId, title: winTitle, posx: 200, posy: 100, width: wdth, height: hdth, type: 'iframe', url: pageURL, minimiseButton:false, maximiseButton:false, draggable:false, resizeable:false, modal: true });
+   jWindowObj.show();
+   jWindowObj.update();
+   $('#usersWindow').center();
+   return false;
+ }
+</script>
 
 [#if PRINT!="1"#]
 <!--# top  #-->
-<style>
-body {
-max-width: 1200px;
-margin: 0 auto;
-}
-div#content {
-margin: 35px 10px;
-padding: 20px 40px;
-}
-p, .btn, h1 {
-margin: 10px 0;
-}
-.navbar-fixed-top .container, .navbar-fixed-bottom .container {
-        width: 1100px;
-}
-</style>
-<div id="content" class="content">
-<div class="navbar navbar-fixed-top">
-        <div class="navbar-inner">
-                <div class="container">
-                <a class="brand" href="/"><#SETTINGS_SITE_TITLE#> // <span class="color-white"><#LANG_CONTROL_PANEL#></span></a>
-                        <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </a>
-                        <div class="nav-collapse">
-                                <ul class="nav">
-                                        <li>
-                                                <a href="<#ROOTHTML#>" target=_blank class=smw><#LANG_FRONTEND#></a>
-                                        </li>
-                                        <li>
-                                                <a href="<#ROOTHTML#>menu.html" target=_blank class=smw><#LANG_CONTROL_MENU#></a>
-                                        </li>
-                                        <li>
-                                                <a href="?action=xray" target=_blank class=smw>X-Ray</a>
-                                        </li>
-                                        <li>
-                                                <a href="<#LANG_WIKI_URL#>" target=_blank  class=smw>MajorDoMo Project</a>
-                                        </li>
-                                        <li>
-                                                <a href="?md=control_access&mode=logoff" class=smw><#LANG_LOGOFF#></a>
-                                        </li>
-                                </ul>
-                        </div>
-                </div>
-        </div>
+
+<!--# top  #-->
+<div class="container-fluid">
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+   <div class="navbar-header">
+    <button type=button class="navbar-toggle" data-toggle="collapse" data-target="#responsive-menu">
+    <span class="icon-bar"></span>
+    <span class="icon-bar"></span>
+    <span class="icon-bar"></span>
+    </button>
+  <a class="navbar-brand" href="/" style="padding:8px"><img src="<#ROOTHTML#>img/logo_small.png" border="0" align="absmiddle"> MajorDoMo </a>
+  </div>
+
+  <div class="collapse navbar-collapse" id="responsive-menu">
+    <ul class="nav navbar-nav navbar-right" >
+      <li>
+        <a href="<#ROOTHTML#>"><i class="glyphicon glyphicon-home"></i> <#LANG_FRONTEND#></a>
+      </li>
+      <li>
+        <a href="<#ROOTHTML#>pages.html" target=_blank><i class="glyphicon glyphicon-th-list"></i> <#LANG_MODULE_LAYOUTS#></a>
+      </li>
+      <li>
+        <a href="<#ROOTHTML#>menu.html" target=_blank><i class="glyphicon glyphicon-th-list"></i> <#LANG_CONTROL_MENU#></a>
+      </li>
+      <li>
+        <a href="?action=xray"><i class="glyphicon glyphicon-dashboard"></i> X-Ray</a>
+      </li>
+      <li>
+        <a href="#" onClick='$("#console").toggle();return false;'><i class="glyphicon glyphicon-flash"></i> Console</a>
+      </li>
+      <li>
+        <a href="<#LANG_WIKI_URL#>" target=_blank><i class="glyphicon glyphicon-globe"></i> MajorDoMo Project</a>
+      </li>
+      <li>
+        <a href="?md=control_access&mode=logoff"><i class="glyphicon glyphicon-log-out"></i> <#LANG_LOGOFF#></a>
+      </li>
+   </ul>
+  </div>
+</nav>
+</div>
+<br><br><br>
+<!--# .top  #-->
+<div id='console' style='display:none'>
+<script language="javascript">
+ var cmd='';
+ function sendConsoleCommand() {
+  cmd=$('#command').val();
+  $('#command').val('');
+
+ var url="?";
+ url+='&ajax_panel=1&op=console&command='+encodeURIComponent(cmd);
+
+ $.ajax({
+   url: url
+  }).done(function(data) { 
+   $('#console_output').html('<pre>Command: <b>'+cmd+'</b><br/>Result:<br/>'+data+'</pre>');
+  });
+
+
+  return false;
+ }
+</script>
+<form class="form-inline" role="form" action="?" method="get" onSubmit="return sendConsoleCommand();">
+  <div class="form-group col-lg-6">
+    <input type="text" name="command" value="" id="command" class="form-control" placeholder="Code, method, expression...">
+  </div>
+ <input type="submit" name="submit" value="Send" class="btn btn-default">
+</form>
+&nbsp;
+<div id='console_output' style="margin-left:15px">&nbsp;</div>
 </div>
 
-<!--# .top  #-->
-
-<!--/head-->
-[#endif PRINT#]
-[#if PRINT!="1"#]
-
 <ul class="breadcrumb">
-    <li>
-    <#LANG_YOU_ARE_HERE#>: <a href="?"><#LANG_CONTROL_PANEL#></a>[#if ACTION!=""#]<span class="divider">/</span>[#endif#]
+   <li>
+<script language="javascript">
+ function leftPanelToggle() {
+  $('#left_block').toggle();
+  if ( $("#left_block").is(":visible") ) {
+   $("#leftPanelToggleIcon").attr("src","<#ROOTHTML#>img/icons/application-side-contract-icon.png");
+   setCookie('adminLeftPanel', '');
+  } else { 
+   $("#leftPanelToggleIcon").attr("src","<#ROOTHTML#>img/icons/application-side-expand-icon.png");
+   setCookie('adminLeftPanel', 'off');
+  }
+  return false;
+ }
+</script>
+
+
+<a href="#" onClick="return leftPanelToggle();"><img id="leftPanelToggleIcon" border="0" src="<#ROOTHTML#>img/icons/application-side-contract-icon.png" border="0"></a>
+
+    <#LANG_YOU_ARE_HERE#>: <a href="?"><#LANG_CONTROL_PANEL#></a>
     </li>
     [#if ACTION!=""#]
         <li class="active"><#ACTION#></li>
@@ -175,24 +304,46 @@ margin: 10px 0;
         
         <div class="float-right">
         <!--# date  #-->
-        [#TODAY#]
         <!--# .date  #-->
-        <span class="divider">/</span>
-        <a href="<#LANG_WIKI_URL#>Main/module_<#ACTION#>" target=_blank><#LANG_MODULE_DESCRIPTION#></a>
+        <a href="<#LANG_WIKI_URL#>Main/module_<#ACTION#>" target=_blank><i class="glyphicon glyphicon-question-sign"></i> <#LANG_MODULE_DESCRIPTION#></a>
         </div>
 </ul>
 
 [#endif PRINT#]
 <!--main-->
-<table id="content">
-<tr>
-[#if PRINT!="1"#]
-<td class="well sidebar-left"><!--left_main-->
+<table  id="content">
+    <tr>
+        [#if PRINT!="1"#]
+        <td class="well sidebar-left" valign="top" id="left_block"><!--left_main-->
 
-<form id="filterModules" class="form-horizontal" name="frmFilterModules"><div class="input-prepend"><span class="add-on"><i class="icon-search"> </i></span><input type="text" name="filter_modules" style="width: 140px" placeholder="<#LANG_FILTER#>"></div></form>
+           
+<form id="filterModules" class="form-horizontal" name="frmFilterModules"><div class="input-group"><span class="input-group-addon"><i class="glyphicon glyphicon-search"> </i></span>
+<input type="text" class="form-control" name="filter_modules" id="filter_modules" style="width: 140px" placeholder="<#LANG_FILTER#>"></div></form>
 
-        <!--[menu]-->
+<div id='filter_add' style='display:none;text-overflow:hidden;white-space:nowrap;'>...</div>
 
+<script language="javascript">
+ function toggleCategory(id) {
+  if ($('.category'+id+':first').is(":visible")) {
+   setCookie('sub_'+id, 'off');
+  } else {
+   setCookie('sub_'+id, 'on');
+  }
+  $('.category'+id).toggle();
+  return false;
+ }
+
+ function checkCategory(id) {
+  var vl=getCookie('sub_'+id);
+  if (vl!='on') {
+   $('.category'+id).hide();
+  }
+  return false;
+ }
+
+</script>
+
+            <!--[menu]-->
 <ul class="nav nav-list">
    [#begin SUB_MODULES#]
    [#if NEW_CATEGORY#]
@@ -200,55 +351,93 @@ margin: 10px 0;
    <ul class="nav nav-list" id="row_[#CATEGORY#]">
    [#if CATEGORY!=""#]
    <li class="nav-header">
-   [#CATEGORY#]
+   <a href="#" onClick="return toggleCategory('[#CATEGORY_ID#]');">[#CATEGORY#]</a>
    </li>
    [#else CATEGORY#]&nbsp;[#endif CATEGORY#]
-   <script language='javascript'>
-    checkLayer('[#CATEGORY#]');
-   </script>
    [#endif NEW_CATEGORY#]
    [#if !DENIED#]
    [#if SELECTED#]
-                <li class="active" id="module_[#NAME#]_link"><a href="?action=[#NAME#]">[#TITLE#]</a></li>
+                <li class="active category[#CATEGORY_ID#]" id="module_[#NAME#]_link"><a href="?action=[#NAME#]">[#TITLE#]</a></li>
    [#else#]
-                <li id="module_[#NAME#]_link"><a href="?action=[#NAME#]">[#TITLE#]</a></li>
+                <li class="category[#CATEGORY_ID#]" id="module_[#NAME#]_link"><a href="?action=[#NAME#]">[#TITLE#]</a></li>
    [#endif#]
    [#endif DENIED#]
    [#end SUB_MODULES#]
 </ul>
 
-                <!--/left_main--></td>
-[#endif PRINT#]
+   [#begin SUB_MODULES#]
+   [#if NEW_CATEGORY#]
+   <script language='javascript'>
+    checkCategory('[#CATEGORY_ID#]');
+   </script>
+   [#endif NEW_CATEGORY#]
+   [#end SUB_MODULES#]
+
+            <!--[/menu]-->
+
+            <!--/left_main-->
+
+  <script language="javascript">
+  var vl=getCookie('adminLeftPanel');
+  if (vl=='off') {
+   $('#left_block').hide();
+  }
+  </script>
+
+        </td>
+        [#endif PRINT#]
+
+
 <td height=100% valign=top class="" id="main-content">
-<!--right_main-->
-<!--# [#if PRINT!="1"#]
-        <table cellpadding=10 cellspacing=0 border=0 width=100%><tr>
-        <td width=100% bgcolor="#E3E6E9" class=sm>You are here:
-        <a href="?">Control Panel</a>
-        [#if ACTION!=""#]&raquo; <b><#ACTION#></b>[#endif#]
-        </td></tr></table>
-[#endif PRINT#] #-->
-        <table width=100% height=100%><tr>
-        <td width=100% valign=top>
-
-   [#if ACTION!=""#]
-    [#module name="<#ACTION#>" action="admin" instance="adm"#]
-   [#else ACTION#]
-    [#module name="control_access" action="logged" instance="auth"#]
-   [#endif ACTION#]
 
 
-        <!--[/main]-->
-        </td></tr></table>
 
-</td></tr>
+            <!--right_main-->
+            <table cellpadding="0" cellspacing="12" border="0" width="100%" height="100%">
+                <tr>
+                    <td width=100% valign=top>
 
+
+
+
+                        [#if ACTION!=""#]
+                                [#module name="<#ACTION#>" action="admin" instance="adm"#]
+                        [#else ACTION#]
+                                [#module name="control_access" action="logged" instance="auth"#]
+                        [#endif ACTION#]
+                        <!--[/main]-->
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
 </table>
- [#else AUTHORIZED#]
-
- [#module name="control_access" action="enter" instance="auth"#]
-
- [#endif AUTHORIZED#]
+[#else AUTHORIZED#]
+        [#module name="control_access" action="enter" instance="auth"#]
+[#endif AUTHORIZED#]
+<br><br>
 </div>
+
+<script language="javascript">
+ $(document).ready(function() {
+
+
+        $(".wiki_hint").fancybox({
+                maxWidth        : 800,
+                maxHeight       : 600,
+                fitToView       : false,
+                width           : '70%',
+                height          : '70%',
+                autoSize        : false,
+                closeClick      : false,
+                openEffect      : 'none',
+                closeEffect     : 'none'
+        });
+
+
+        
+});
+</script>
+
 </body>
 </html>

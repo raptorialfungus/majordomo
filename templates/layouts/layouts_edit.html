@@ -3,6 +3,21 @@
 #-->
 
 <!-- Table 'layouts' edit -->
+<ul class="breadcrumb">
+<li> 
+<a href="?"><#LANG_HOME#></a>
+</li>
+<span class="divider">/</span>
+<li class="active">
+[#if ID=""#]
+<#LANG_NEW_RECORD#>
+[#else#]
+<#LANG_EDIT_RECORD#>
+[#endif#]
+</li>
+</ul>
+
+
 
 <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="form-horizontal">
 [#if OK#]
@@ -26,36 +41,52 @@
 [#endif ID#]
 <!-- TITLE (varchar) -->
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_TITLE#>(*)</label>
         <div class="controls">
-                <input type="text" name="title" value="[#TITLE#]" required>
+                <input class="form-control" type="text" name="title" value="[#TITLE#]" required>
         </div>
 </div>
 
 <!-- PRIORITY (int) -->
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_PRIORITY#></label>
         <div class="controls">
-                <input type="text" name="priority" value="[#PRIORITY#]">
+                <input class="form-control" type="text" name="priority" value="[#PRIORITY#]">
         </div>
 </div>
 
 <!-- TYPE (select) -->
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_AUTO_UPDATE_PERIOD#></label>
         <div class="controls">
-                <input type="text" name="refresh" value="[#REFRESH#]">
+                <input class="form-control" type="text" name="refresh" value="[#REFRESH#]">
+        </div>
+</div>
+
+<div class="form-group">
+        <label class="control-label"><#LANG_ICON#></label>
+        <div class="controls">
+                <input type="file" name="icon">
+        <p class="help-block">
+                [#if ICON!=""#]
+                <label class="checkbox">
+                <input class="form-control" type="checkbox" name="delete_icon" value="1"><#LANG_DELETE#>
+                </label>
+                <img src="<#ROOTHTML#>cms/layouts/[#ICON#]" border="0">
+                [#ICON#]<br>
+                [#endif#]
+        </p>
         </div>
 </div>
 
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_TYPE#></label>
         <div class="controls">
-                <select name="type">
+                <select class="form-control" name="type">
                 <option value="">select
                 [#begin TYPE_OPTIONS#]<option value="[#VALUE#]"[#if SELECTED#] selected[#endif#]>[#TITLE#]
                 [#end TYPE_OPTIONS#]
@@ -66,10 +97,11 @@
 <!-- CODE (text) -->
 [#if TYPE="html"#]
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_CODE#></label>
         <div class="controls">
-                <textarea name="code" rows=12 cols=100>[#CODE#]</textarea>
+                <textarea class="form-control" name="code" id="code" rows=12 cols=100>[#CODE#]</textarea>
+                [#module name="blockly_code" code_field="code" action="" type="html"#]
         </div>
 </div>
 
@@ -78,32 +110,41 @@
 <!-- APP (varchar) -->
 
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_APP#></label>
         <div class="controls">
-                <input type="text" name="appname" value="[#APP#]">
+                <input type="text" class="form-control" name="appname" value="[#APP#]">
         </div>
 </div>
 
 [#endif TYPE#]
 [#if TYPE="url"#]
 
-<div class="control-group">
+<div class="form-group">
         <label class="control-label"><#LANG_URL#></label>
         <div class="controls">
-                <input type="text" name="url" value="[#URL#][#if URL=""#]http://[#endif#]">
+                <input type="text" class="form-control" name="url" value="[#URL#][#if URL=""#]http://[#endif#]">
         </div>
 </div>
 
 [#endif TYPE#]
 
 [#if ID!=""#]
-<div class="control-group">
+<div class="form-group">
+        <label class="control-label"><#LANG_ACCESS_CONTROL#>:</label>
+        <div class="controls">
+                <a href="?(panel:{action=security_rules})&object_type=layout&object_id=[#ID#]&print=1" onClick="return openModalTWindow('security', '<#LANG_ACCESS_CONTROL#>', this.href, 800, 600);" target=_blank><#LANG_SET#></a>
+        </div>
+</div>
+[#endif ID#]
+
+[#if ID!=""#]
+<div class="form-group">
         <label class="control-label"><#LANG_URL#> (preview):</label>
         <div class="controls">
 
 [#if TYPE="html"#]
-<a href="/page/[#ID#].html" target=_blank>/page/[#ID#].html</a>
+<a href="<#ROOTHTML#>page/[#ID#].html" target=_blank>/page/[#ID#].html</a>
 [#endif TYPE#]
 
 [#if TYPE="url"#]
@@ -111,21 +152,23 @@
 [#endif TYPE#]
 
 [#if TYPE="app"#]
-<a href="/popup/[#APP#].html" target=_blank>/popup/[#APP#].html</a>
+<a href="<#ROOTHTML#>popup/[#APP#].html" target=_blank>/popup/[#APP#].html</a>
 [#endif TYPE#]
         
         </div>
 </div>
 
-<div class="form-actions">
-<button class="btn" type="submit" name="subm"><i class="icon-ok"></i> <#LANG_SUBMIT#></button>
+<div class="form-group">
+<div class="col-lg-offset-2 col-lg-5">
+<button class="btn btn-default btn-primary" type="submit" name="subm"> <#LANG_SUBMIT#></button>
 [#else ID#]
-<div class="form-actions">
-<button class="btn" type="submit" name="subm"><i class="icon-plus-sign"></i> <#LANG_ADD#></button>
+<div class="form-group">
+<div class="col-lg-offset-2 col-lg-5">
+<button class="btn btn-default btn-primary" type="submit" name="subm"> <#LANG_ADD#></button>
 [#endif ID#]
 
-<a class="btn" href="?"><#LANG_CANCEL#></a>
-</div>
+<a class="btn btn-default " href="?"><#LANG_CANCEL#></a>
+</div></div>
 <input type="hidden" name="id" value="<#ID#>">
 <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
 <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">

@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * History 
 *
@@ -185,8 +185,9 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
+  SQLExec("UPDATE project_modules SET HIDDEN=1 WHERE NAME LIKE 'history'");
  }
 /**
 * Uninstall
@@ -206,7 +207,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 history - History
 */

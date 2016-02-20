@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Scripts 
 *
@@ -31,21 +31,21 @@ function scripts() {
 *
 * @access public
 */
-function saveParams() {
- $p=array();
+function saveParams($data=1) {
+ $data=array();
  if (IsSet($this->id)) {
-  $p["id"]=$this->id;
+  $data["id"]=$this->id;
  }
  if (IsSet($this->view_mode)) {
-  $p["view_mode"]=$this->view_mode;
+  $data["view_mode"]=$this->view_mode;
  }
  if (IsSet($this->edit_mode)) {
-  $p["edit_mode"]=$this->edit_mode;
+  $data["edit_mode"]=$this->edit_mode;
  }
  if (IsSet($this->tab)) {
-  $p["tab"]=$this->tab;
+  $data["tab"]=$this->tab;
  }
- return parent::saveParams($p);
+ return parent::saveParams($data);
 }
 /**
 * getParams
@@ -117,24 +117,38 @@ function run() {
   $this->result=$p->result;
 }
 
-/**
-* Title
-*
-* Description
-*
-* @access public
-*/
- function runScript($id, $params='') {
-  $rec=SQLSelectOne("SELECT * FROM scripts WHERE ID='".(int)$id."' OR TITLE LIKE '".DBSafe($id)."'");
-  if ($rec['ID']) {
-   $rec['EXECUTED']=date('Y-m-d H:i:s');
-   if ($params) {
-    $rec['EXECUTED_PARAMS']=serialize($params);
-   }
-   SQLUpdate('scripts', $rec);
-   eval($rec['CODE']);
+  /**
+   * Title
+   *
+   * Description
+   *
+   * @access public
+   */
+  function runScript($id, $params = '')
+  {
+    $rec = SQLSelectOne("SELECT * FROM scripts WHERE ID='" . (int)$id . "' OR TITLE LIKE '" . DBSafe($id) . "'");
+    if ($rec['ID']) {
+      $rec['EXECUTED'] = date('Y-m-d H:i:s');
+      if ($params) {
+        $rec['EXECUTED_PARAMS'] = serialize($params);
+      }
+      SQLUpdate('scripts', $rec);
+
+      try {
+        $code = $rec['CODE'];
+        $success = eval($code);
+        if ($success === false) {
+          getLogger($this)->error(sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
+          registerError('script', sprintf('Error in script "%s". Code: %s', $rec['TITLE']));
+        }
+        return $success;
+      } catch (Exception $e) {
+        getLogger($this)->error(sprintf('Error in script "%s"', $rec['TITLE']), $e);
+        registerError('script', sprintf('Error in script "%s": '.$e->getMessage(), $rec['TITLE']));
+      }
+
+    }
   }
- }
 
 /**
 * BackEnd
@@ -155,6 +169,10 @@ function admin(&$out) {
    $this->runScript($this->id);
    exit;
    //$this->redirect("?");
+  }
+
+  if ($this->view_mode=='clone' && $this->id) {
+   $this->clone_script($this->id);
   }
 
   if ($this->view_mode=='edit_scripts') {
@@ -184,6 +202,23 @@ function admin(&$out) {
  }
 
 }
+
+/**
+* Title
+*
+* Description
+*
+* @access public
+*/
+ function clone_script($id) {
+  $rec=SQLSelectOne("SELECT * FROM scripts WHERE ID='".(int)$id."'");
+  $rec['TITLE'].='_copy';
+  unset($rec['ID']);
+  unset($rec['EXECUTED']);
+  $rec['ID']=SQLInsert('scripts', $rec);
+  $this->redirect("?view_mode=edit_scripts&id=".$rec['ID']);
+ }
+
 /**
 * FrontEnd
 *
@@ -225,6 +260,52 @@ function usual(&$out) {
   SQLExec("DELETE FROM scripts WHERE ID='".$rec['ID']."'");
  }
 
+/**
+* Title
+*
+* Description
+*
+* @access public
+*/
+ function checkScheduledScripts() {
+  $scripts=SQLSelect("SELECT ID, TITLE, RUN_DAYS, RUN_TIME FROM scripts WHERE RUN_PERIODICALLY=1 AND (UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(EXECUTED))>1200");
+
+
+
+  $total=count($scripts);
+  for($i=0;$i<$total;$i++) {
+
+   $rec=$scripts[$i];
+
+   if ($rec['RUN_DAYS']==='') {
+    continue;
+   }
+
+   $run_days=explode(',', $rec['RUN_DAYS']);
+   if (!in_array(date('w'), $run_days)) {
+    continue;
+   }
+
+   $tm=strtotime(date('Y-m-d').' '.$rec['RUN_TIME']);
+
+   $diff=time()-$tm;
+
+   if ($diff<0 || $diff>=10*60) {
+    continue;
+   }
+
+   runScript($rec['TITLE']);
+
+   $rec['DIFF']=$diff;
+
+   //print_r($rec);
+
+  }
+  //print_r($scripts);
+
+ }
+
+
  function delete_categories($id) {
   $rec=SQLSelectOne("SELECT * FROM script_categories WHERE ID='$id'");
   // some action for related tables
@@ -238,8 +319,8 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
  }
 /**
 * Uninstall
@@ -259,7 +340,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 scripts - Scripts
 */
@@ -273,6 +354,9 @@ scripts - Scripts
  scripts: XML text
  scripts: EXECUTED datetime
  scripts: EXECUTED_PARAMS varchar(255)
+ scripts: RUN_PERIODICALLY int(3) unsigned NOT NULL DEFAULT 0
+ scripts: RUN_DAYS char(30) NOT NULL DEFAULT ''
+ scripts: RUN_TIME char(30) NOT NULL DEFAULT ''
 
  script_categories: ID int(10) unsigned NOT NULL auto_increment
  script_categories: TITLE varchar(255) NOT NULL DEFAULT ''
@@ -283,7 +367,6 @@ scripts - Scripts
  safe_execs: EXCLUSIVE int(3) NOT NULL DEFAULT 0
  safe_execs: PRIORITY int(10) NOT NULL DEFAULT 0
  safe_execs: ADDED datetime
-
 
 
 EOD;

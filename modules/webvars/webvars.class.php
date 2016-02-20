@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * webvars 
 *
@@ -139,12 +139,35 @@ function admin(&$out) {
   if ($this->view_mode=='edit_webvars') {
    $this->edit_webvars($out, $this->id);
   }
+
+  if ($this->view_mode=='clone') {
+   $this->clone_webvar($this->id);
+  }
+
   if ($this->view_mode=='delete_webvars') {
    $this->delete_webvars($this->id);
    $this->redirect("?");
   }
  }
 }
+
+/**
+* Title
+*
+* Description
+*
+* @access public
+*/
+ function clone_webvar($id) {
+  $rec=SQLSelectOne("SELECT * FROM webvars WHERE ID='".(int)$id."'");
+  $rec['TITLE'].=' (copy)';
+  unset($rec['ID']);
+  $rec['LOG']='';
+  $rec['LATEST_VALUE']='';
+  $rec['ID']=SQLInsert('webvars', $rec);
+  $this->redirect("?view_mode=edit_webvars&id=".$rec['ID']);
+ }
+
 /**
 * FrontEnd
 *
@@ -202,8 +225,12 @@ function usual(&$out) {
   for($i=0;$i<$total;$i++) {
    $host=$pings[$i];
    if (!$force) {
-    echo "Checking webvar: ".$host['HOSTNAME']."\n";
+    echo date('H:i:s')." Checking webvar: ".processTitle($host['HOSTNAME'])."\n";
    }
+   if (!$host['HOSTNAME']) {
+    continue;
+   }
+
    $online_interval=$host['ONLINE_INTERVAL'];
    if (!$online_interval) {
     $online_interval=60;
@@ -216,11 +243,11 @@ function usual(&$out) {
    //web host
    $old_status=$host['LATEST_VALUE'];
    if ($host['AUTH'] && $host['USERNAME']) {
-    $content=getURL($host['HOSTNAME'], $host['ONLINE_INTERVAL'], $host['USERNAME'], $host['PASSWORD']);
+    $content=getURL(processTitle($host['HOSTNAME']), $host['ONLINE_INTERVAL'], $host['USERNAME'], $host['PASSWORD']);
    } else {
-    $content=getURL($host['HOSTNAME'], $host['ONLINE_INTERVAL']);
+    $content=getURL(processTitle($host['HOSTNAME']), $host['ONLINE_INTERVAL']);
    }
-   
+
    if ($host['ENCODING']!='') {
     $content=iconv($host['ENCODING'], "UTF-8", $content);
    }
@@ -229,7 +256,11 @@ function usual(&$out) {
    $new_status='';
    if ($host['SEARCH_PATTERN']) {
     if (preg_match('/'.$host['SEARCH_PATTERN'].'/is', $content, $m)) {
-     $new_status=$m[1];
+     //$new_status=$m[1];
+     $total1=count($m);
+     for($i1=1;$i1<$total1;$i1++) {
+      $new_status.=$m[$i1];
+     }
     } else {
      $ok=0; // result did not matched
     }
@@ -240,9 +271,19 @@ function usual(&$out) {
    if ($host['CHECK_PATTERN'] && !preg_match('/'.$host['CHECK_PATTERN'].'/is', $new_status)) {
     $ok=0; // result did not pass the check
    }
+
+   if (strlen($new_status)>50*1024) {
+    $new_status=substr($new_status, 0, 50*1024);
+   }
    
    if (!$ok) {
     $host['LOG']=date('Y-m-d H:i:s').' incorrect value:'.$new_status."\n".$host['LOG'];
+    $tmp=explode("\n", $host['LOG']);
+    $total=count($tmp);
+    if ($total>50) {
+     $tmp=array_slice($tmp, 0, 50);
+     $host['LOG']=implode("\n", $tmp);
+    }
     SQLUpdate('webvars', $host);
     continue;
    }
@@ -253,6 +294,12 @@ function usual(&$out) {
 
    if ($old_status!=$new_status) {
      $host['LOG']=date('Y-m-d H:i:s').' new value:'.$new_status."\n".$host['LOG'];
+     $tmp=explode("\n", $host['LOG']);
+     $total=count($tmp);
+     if ($total>50) {
+      $tmp=array_slice($tmp, 0, 50);
+      $host['LOG']=implode("\n", $tmp);
+     }
    }
 
    $host['LATEST_VALUE']=$new_status;
@@ -280,7 +327,18 @@ function usual(&$out) {
      runScript($run_script_id, $params);
     } elseif ($run_code) {
      //run code
-     eval($run_code);
+                  try {
+                   $code=$run_code;
+                   $success=eval($code);
+                   if ($success===false) {
+                    DebMes("Error in webvar code: ".$code);
+                    registerError('webvars', "Error in webvar code: ".$code);
+                   }
+                  } catch(Exception $e){
+                   DebMes('Error: exception '.get_class($e).', '.$e->getMessage().'.');
+                   registerError('webvars', get_class($e).', '.$e->getMessage());
+                  }
+
     }
 
    }
@@ -319,7 +377,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 webvars - webvars
 */

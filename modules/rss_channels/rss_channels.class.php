@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * RSS Channels 
 *
@@ -227,8 +227,17 @@ function usual(&$out) {
   $ch['NEXT_UPDATE']=date('Y-m-d H:i:s', time()+$ch['UPDATE_EVERY']*60);
   SQLUpdate('rss_channels', $ch);
 
+  /*
+  $cch =curl_init();
+  curl_setopt($cch, CURLOPT_URL, $ch['URL']);
+  curl_setopt($cch, CURLOPT_HTTPHEADER, array("User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3"));
+  curl_setopt($cch, CURLOPT_RETURNTRANSFER, true);
+  $rssdata = curl_exec($cch);
+  curl_close($cch);
+  */
+  $rssdata = getURL($ch['URL'], 0);
+  $data = simplexml_load_string($rssdata);
 
-  $data = simplexml_load_file($ch['URL']);
                                         if ($data)
                                         {
                                                 if (is_object($data->channel) && ! empty($data->channel))
@@ -300,8 +309,8 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
  }
 /**
 * Uninstall
@@ -322,7 +331,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 rss_channels - RSS Channels
 rss_items - RSS Items

@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Layouts 
 *
@@ -32,21 +32,21 @@ function layouts() {
 *
 * @access public
 */
-function saveParams() {
- $p=array();
+function saveParams($data=1) {
+ $data=array();
  if (IsSet($this->id)) {
-  $p["id"]=$this->id;
+  $data["id"]=$this->id;
  }
  if (IsSet($this->view_mode)) {
-  $p["view_mode"]=$this->view_mode;
+  $data["view_mode"]=$this->view_mode;
  }
  if (IsSet($this->edit_mode)) {
-  $p["edit_mode"]=$this->edit_mode;
+  $data["edit_mode"]=$this->edit_mode;
  }
  if (IsSet($this->tab)) {
-  $p["tab"]=$this->tab;
+  $data["tab"]=$this->tab;
  }
- return parent::saveParams($p);
+ return parent::saveParams($data);
 }
 /**
 * getParams
@@ -128,6 +128,16 @@ function admin(&$out) {
   $out['SET_DATASOURCE']=1;
  }
  if ($this->data_source=='layouts' || $this->data_source=='') {
+
+  if ($this->view_mode=='moveup' && $this->id) {
+   $this->reorder_items($this->id, 'up');
+   $this->redirect("?");
+  }
+  if ($this->view_mode=='movedown' && $this->id) {
+   $this->reorder_items($this->id, 'down');
+   $this->redirect("?");
+  }
+
   if ($this->view_mode=='' || $this->view_mode=='search_layouts') {
    $this->search_layouts($out);
   }
@@ -196,6 +206,33 @@ function usual(&$out) {
   SQLExec("DELETE FROM layouts WHERE ID='".$rec['ID']."'");
   @unlink(ROOT.'cms/layouts/'.$rec['ID'].'.html');
  }
+
+ function reorder_items($id, $direction='up') {
+  $element=SQLSelectOne("SELECT * FROM layouts WHERE ID='".(int)$id."'");
+  $all_elements=SQLSelect("SELECT * FROM layouts WHERE 1 ORDER BY PRIORITY DESC, TITLE");
+  $total=count($all_elements);
+  for($i=0;$i<$total;$i++) {
+   if ($all_elements[$i]['ID']==$id && $i>0 && $direction=='up') {
+    $tmp=$all_elements[$i-1];
+    $all_elements[$i-1]=$all_elements[$i];
+    $all_elements[$i]=$tmp;
+    break;
+   }
+   if ($all_elements[$i]['ID']==$id && $i<($total-1) && $direction=='down') {
+    $tmp=$all_elements[$i+1];
+    $all_elements[$i+1]=$all_elements[$i];
+    $all_elements[$i]=$tmp;
+    break;
+   }
+  }
+  $priority=($total)*10;
+  for($i=0;$i<$total;$i++) {
+   $all_elements[$i]['PRIORITY']=$priority;
+   $priority-=10;
+   SQLUpdate('layouts', $all_elements[$i]);
+  }
+ }
+
 /**
 * Install
 *
@@ -203,8 +240,8 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
  }
 /**
 * Uninstall
@@ -224,7 +261,7 @@ function usual(&$out) {
 *
 * @access private
 */
- function dbInstall() {
+ function dbInstall($data) {
 /*
 layouts - Layouts
 */
@@ -235,6 +272,7 @@ layouts - Layouts
  layouts: TYPE varchar(255) NOT NULL DEFAULT ''
  layouts: CODE text
  layouts: APP varchar(255) NOT NULL DEFAULT ''
+ layouts: ICON varchar(50) NOT NULL DEFAULT ''
  layouts: URL char(255) NOT NULL DEFAULT ''
  layouts: REFRESH int(10) NOT NULL DEFAULT '0'
  layouts: DETAILS text

@@ -1,7 +1,12 @@
-<?
+<?php
 /*
 * @version 0.1 (wizard)
 */
+
+  global $parent_id;
+  $out['PARENT_ID']=$parent_id;
+
+
   if ($this->owner->name=='panel') {
    $out['CONTROLPANEL']=1;
   }
@@ -23,6 +28,40 @@
 
    global $script;
    $rec['SCRIPT']=trim($script);
+   if ($rec['SCRIPT']!='') {
+    $errors=php_syntax_error($rec['SCRIPT']);
+    if ($errors) {
+     $out['ERR_SCRIPT']=1;
+     $out['ERRORS_SCRIPT']=nl2br($errors);
+     $ok=0;
+    }
+   }
+
+
+   global $script_exit;
+   global $use_script_exit;
+
+   if (!$use_script_exit) {
+    $script_exit='';
+   }
+
+   $rec['SCRIPT_EXIT']=trim($script_exit);
+
+   if ($rec['SCRIPT_EXIT']!='') {
+    $errors=php_syntax_error($rec['SCRIPT_EXIT']);
+    if ($errors) {
+     $out['ERR_SCRIPT_EXIT']=1;
+     $out['ERRORS_SCRIPT_EXIT']=nl2br($errors);
+     $ok=0;
+    }
+   }
+
+
+   if (!$rec['ID']) {
+    global $pattern_type;
+    $rec['PATTERN_TYPE']=(int)$pattern_type;
+   }
+
 
    global $run_type;
 
@@ -54,6 +93,75 @@
     $ok=0;
    }
    */
+
+   global $is_context;
+   $rec['IS_CONTEXT']=(int)$is_context;
+
+   global $is_common_context;
+   $rec['IS_COMMON_CONTEXT']=(int)$is_common_context;
+
+   global $matched_context_id;
+   $rec['MATCHED_CONTEXT_ID']=(int)$matched_context_id;
+
+   global $timeout;
+   $rec['TIMEOUT']=(int)$timeout;
+
+   global $is_last;
+   $rec['IS_LAST']=(int)$is_last;
+
+   global $priority;
+   $rec['PRIORITY']=(int)$priority;
+
+   global $skipsystem;
+   $rec['SKIPSYSTEM']=(int)$skipsystem;
+
+   global $onetime;
+   $rec['ONETIME']=(int)$onetime;
+
+
+
+   global $timeout_context_id;
+   $rec['TIMEOUT_CONTEXT_ID']=(int)$timeout_context_id;
+
+
+   global $timeout_script;
+   if ($timeout_script!='') {
+    $rec['TIMEOUT_SCRIPT']=$timeout_script;
+    $errors=php_syntax_error($rec['TIMEOUT_SCRIPT']);
+    if ($errors) {
+     $out['ERR_TIMEOUT_SCRIPT']=1;
+     $out['ERRORS_TIMEOUT_SCRIPT']=nl2br($errors);
+     $ok=0;
+    }
+   } else {
+    $rec['TIMEOUT_SCRIPT']='';
+   }
+
+
+   $rec['PARENT_ID']=(int)$parent_id;
+
+   if ($rec['PATTERN_TYPE']==1) {
+    $rec['PARENT_ID']=0;
+
+    global $linked_object;
+    $rec['LINKED_OBJECT']=$linked_object;
+
+    global $linked_property;
+    $rec['LINKED_PROPERTY']=$linked_property;
+
+    global $condition;
+    $rec['CONDITION']=$condition;
+
+    global $condition_value;
+    $rec['CONDITION_VALUE']=$condition_value;
+
+    if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
+     addLinkedProperty($rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $this->name);
+    }
+
+   }
+
+
   //UPDATING RECORD
    if ($ok) {
     if ($rec['ID']) {
@@ -78,5 +186,13 @@
 
   $out['SCRIPTS']=SQLSelect("SELECT ID, TITLE FROM scripts ORDER BY TITLE");
   $out['LOG']=nl2br($rec['LOG']);
+
+  $out['CONTEXTS']=SQLSelect("SELECT ID, TITLE FROM patterns WHERE IS_CONTEXT=1 AND ID!=".(int)$rec['ID']." ORDER BY PARENT_ID, TITLE");
+  
+  if ($rec['ID']) {
+   $out['CHILDREN']=SQLSelect("SELECT ID, TITLE FROM patterns WHERE PARENT_ID='".(int)$rec['ID']."'");
+   $out['SAME_LEVEL']=SQLSelect("SELECT ID, TITLE FROM patterns WHERE PARENT_ID='".(int)$rec['PARENT_ID']."'");
+  }
+
 
 ?>

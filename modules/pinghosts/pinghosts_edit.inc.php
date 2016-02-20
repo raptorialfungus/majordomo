@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.2 (wizard)
 */
@@ -32,6 +32,14 @@
    global $search_word;
    $rec['SEARCH_WORD']=trim($search_word);
   }
+
+  global $counter_required;
+  $rec['COUNTER_REQUIRED']=(int)$counter_required;
+
+  global $linked_object;
+  global $linked_property;
+  $rec['LINKED_OBJECT']=trim($linked_object);
+  $rec['LINKED_PROPERTY']=trim($linked_property);
 
   //updating 'SCRIPT_ID_ONLINE' (int)
   //updating 'CODE_ONLINE' (text)
@@ -119,15 +127,14 @@
    $out['TYPE_OPTIONS'][]=array('VALUE'=>$value, 'TITLE'=>$title);
    $type_opt[$value]=$title;
   }
-  for($i=0;$i<count($out['TYPE_OPTIONS']);$i++) {
-   if ($out['TYPE_OPTIONS'][$i]['VALUE']==$rec['TYPE']) {
-    $out['TYPE_OPTIONS'][$i]['SELECTED']=1;
-    /*
-    $out['TYPE']=$out['TYPE_OPTIONS'][$i]['TITLE'];
-    $rec['TYPE']=$out['TYPE_OPTIONS'][$i]['TITLE'];
-    */
-   }
+
+  $optionsTypeCnt = count($out['TYPE_OPTIONS']);
+  for ($i = 0; $i < $optionsTypeCnt;$i++)
+  {
+      if ($out['TYPE_OPTIONS'][$i]['VALUE'] == $rec['TYPE'])
+         $out['TYPE_OPTIONS'][$i]['SELECTED'] = 1;
   }
+
   if (is_array($rec)) {
    foreach($rec as $k=>$v) {
     if (!is_array($v)) {

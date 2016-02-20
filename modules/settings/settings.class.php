@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * General Settings 
 *
@@ -127,6 +127,7 @@ class settings extends module {
    $this->search_settings($out);
   }
  }
+
 }
 /**
 * FrontEnd
@@ -153,11 +154,11 @@ class settings extends module {
 *
 * @access private
 */
- function install() {
+ function install($parent_name="") {
   if (!Is_Dir(ROOT."./settings")) {
    mkdir(ROOT."./settings", 0777);
   }
-  parent::install();
+  parent::install($parent_name);
  }
 /**
 * Uninstall
@@ -177,7 +178,7 @@ class settings extends module {
 *
 * @access private
 */
- function dbInstall() { 
+ function dbInstall($data) {
 $data = <<<EOD
 
  // (description:settings) Web-site settings table
@@ -188,6 +189,7 @@ $data = <<<EOD
  settings: NAME varchar(50) NOT NULL DEFAULT ''          // Setting system name
  settings: TYPE varchar(59) NOT NULL DEFAULT ''          // Setting value type
  settings: NOTES text NOT NULL DEFAULT ''                // Setting Notes / Description
+ settings: DATA text NOT NULL DEFAULT ''                 // Additional data
  settings: VALUE varchar(255) NOT NULL DEFAULT ''        // Setting Value
  settings: DEFAULTVALUE varchar(255) NOT NULL DEFAULT '' // Setting Default Value
  settings: URL varchar(255) NOT NULL DEFAULT ''          // URL for more details

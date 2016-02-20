@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 * @version 0.2 (auto-set)
 */
@@ -19,10 +19,10 @@
    $this->redirect("?");
   }
 
-  if (!$session->data['USERNAME']) {
+  if (!$session->data['SITE_USERNAME']) {
    $out['NOT_LOGGED']=1;
   } else {
-   $user=SQLSelectOne("SELECT * FROM users WHERE USERNAME='".DBSafe($session->data['USERNAME'])."'");
+   $user=SQLSelectOne("SELECT * FROM users WHERE USERNAME='".DBSafe($session->data['SITE_USERNAME'])."'");
    $session->data['logged_user']=$user['ID'];
   }
 
@@ -38,8 +38,10 @@
    $pt=new patterns();
 
 
-   $pt->checkAllPatterns();
-   processCommand($msg);
+   $res=$pt->checkAllPatterns($rec['MEMBER_ID']);
+   if (!$res) {
+    processCommand($msg);
+   }
    $getdata=1;
   }
 
@@ -93,14 +95,22 @@
   } else {
    $limit="LIMIT 50";
   }
+  $limit=str_replace('LIMIT LIMIT', 'LIMIT', $limit);
 
   $out['LIMIT']=$this->limit;
 
 
-  $res=SQLSelect("SELECT shouts.*, DATE_FORMAT(shouts.ADDED, '%H:%i') as DAT, TO_DAYS(shouts.ADDED) as DT, users.NAME FROM shouts LEFT JOIN users ON shouts.MEMBER_ID=users.ID WHERE $qry ORDER BY shouts.ADDED DESC, ID DESC $limit");
+  $res=SQLSelect("SELECT shouts.*, DATE_FORMAT(shouts.ADDED, '%H:%i') as DAT, TO_DAYS(shouts.ADDED) as DT, users.NAME, users.COLOR FROM shouts LEFT JOIN users ON shouts.MEMBER_ID=users.ID WHERE $qry ORDER BY shouts.ADDED DESC, ID DESC $limit");
+
+
+//  if ($_GET['reverse']) {
+   $this->reverse=1;
+//  }
 
   if (!$this->reverse) {
    $res=array_reverse($res);
+  } else {
+   $out['REVERSE']=1;
   }
   $txtdata='';
 
@@ -118,6 +128,12 @@
    }
   }
 
+if (defined('SETTINGS_GENERAL_ALICE_NAME') && SETTINGS_GENERAL_ALICE_NAME!='') {
+ $comp_name=SETTINGS_GENERAL_ALICE_NAME;
+} else {
+ $comp_name=LANG_DEFAULT_COMPUTER_NAME;
+}
+
   if ($res[0]['ID']) {
    $old_dt=$res[0]['DT'];
    $total=count($res);
@@ -126,15 +142,20 @@
     $tmp=explode(' ', $res[$i]['ADDED']);
     $res[$i]['ADDED']=fromDBDate($tmp[0])." ".$tmp[1];
     if ($res[$i]['DT']!=$old_dt) {
-     $txtdata.="<hr size=1>";
+     $txtdata.="<hr size=1><b>".$tmp[0]."</b><br>";
      $old_dt=$res[$i]['DT'];
     }
     if ($res[$i]['MEMBER_ID']==0) {
-     $res[$i]['NAME']='Alice';
+     $res[$i]['NAME']=$comp_name;
     }
-    $txtdata.="".$res[$i]['DAT']." <b>".$res[$i]['NAME']."</b>: ".nl2br($res[$i]['MESSAGE'])."<br>";
+    $stl='';
+    if (trim($res[$i]['COLOR'])) {
+     $stl=' style="color:'.$res[$i]['COLOR'].'"';
+    }
+    $txtdata.="<span$stl>".$res[$i]['DAT']." <b>".$res[$i]['NAME']."</b>: ".nl2br($res[$i]['MESSAGE'])."</span><br>";
    }
    $out['RESULT']=$res;
+   $out['TXT_DATA']=$txtdata;
   } else {
    $txtdata.='No data';
   }

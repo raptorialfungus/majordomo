@@ -1,4 +1,4 @@
-<?
+<?php
 
  global $mode;
 
@@ -6,6 +6,8 @@
 
  $languages[]=array('TITLE'=>'en');
  $languages[]=array('TITLE'=>'ru');
+ $languages[]=array('TITLE'=>'ua');
+ $languages[]=array('TITLE'=>'lt');
 
  $out['LANGUAGES']=$languages;
 
@@ -19,20 +21,6 @@ $regions = array(
     'Indian' => DateTimeZone::INDIAN,
     'Pacific' => DateTimeZone::PACIFIC
 );
-
-/*
-//For earlier versions of PHP:
-$regions = array(
-    'Africa' => 1,
-    'America' => 2,
-    'Antarctica' => 4,
-    'Asia' => 16,
-    'Atlantic' => 32,
-    'Europe' => 128,
-    'Indian' => 256,
-    'Pacific' => 512
-);
-*/
 
 foreach ($regions as $name => $mask) {
     $tzlist[] = DateTimeZone::listIdentifiers($mask);
@@ -57,13 +45,6 @@ for($i=0;$i<$total;$i++) {
  $zones[]=array('TITLE'=>$zn[$i], 'OFFSET'=>$offset, 'OFFSET_TEXT'=>$offset_text);
 }
 
- /**
- * Title
- *
- * Description
- *
- * @access public
- */
   function sort_zones($a, $b) {
    if ($a['OFFSET'] == $b['OFFSET']) return strcmp($a["TITLE"], $b["TITLE"]); 
    return ($a['OFFSET'] < $b['OFFSET']) ? -1 : 1;
@@ -190,8 +171,75 @@ for($i=0;$i<$total;$i++) {
     'TYPE'=>'onoff',
     'DEFAULT'=>'1',
     'PRIORITY'=>'0'
+   ),
+    array(
+    'NAME'=>'PUSHOVER_USER_KEY',
+    'TITLE'=>'Pushover.net user key', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'',
+    'PRIORITY'=>'0'
+   ), 
+    array(
+    'NAME'=>'PUSHOVER_LEVEL',
+    'TITLE'=>'Pushover.net message minimum level', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'1',
+    'PRIORITY'=>'0'
+   ),
+
+   array(
+    'NAME'=>'GROWL_ENABLE',
+    'TITLE'=>'Forward notification to Growl service', 
+    'TYPE'=>'onoff',
+    'DEFAULT'=>'0',
+    'PRIORITY'=>'43'
+   ),
+
+   array(
+    'NAME'=>'GROWL_HOST',
+    'TITLE'=>'Growl service hostname', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'',
+    'PRIORITY'=>'42'
+   ), 
+
+   array(
+    'NAME'=>'GROWL_PASSWORD',
+    'TITLE'=>'Growl service password (optional)', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'',
+    'PRIORITY'=>'41'
+   ), 
+
+    array(
+    'NAME'=>'GROWL_LEVEL',
+    'TITLE'=>'Growl notification minimum level', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'1',
+    'PRIORITY'=>'40'
+   ),
+
+    array(
+    'NAME'=>'HOOK_BEFORE_SAY',
+    'TITLE'=>'Before SAY (code)', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'',
+    'PRIORITY'=>'30'
+   ), 
+
+    array(
+    'NAME'=>'HOOK_AFTER_SAY',
+    'TITLE'=>'After SAY (code)', 
+    'TYPE'=>'text',
+    'DEFAULT'=>'',
+    'PRIORITY'=>'29'
    )
+
+
+
    );
+
+
 
 
    foreach($settings as $k=>$v) {

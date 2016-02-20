@@ -18,11 +18,11 @@
   }
 
 // --------------------------------------------------------------------
-function saveParams() {
- $p=array();
- $p["action"]=$this->action;
- $p["print"]=$this->print;
- return parent::saveParams($p);
+function saveParams($data=1) {
+ $data=array();
+ $data["action"]=$this->action;
+ $data["print"]=$this->print;
+ return parent::saveParams($data);
 }
 
 // --------------------------------------------------------------------
@@ -34,12 +34,62 @@ function getParams() {
 // --------------------------------------------------------------------
  function run() {
   global $session;
+  Define('ALTERNATIVE_TEMPLATES', 'templates_alt');
+
+  global $action;
+  if (!$this->action && $action) {
+   $this->action=$action;
+  }
+
+  if (!$session->data['SITE_USERNAME']) {
+   $users=SQLSelect("SELECT * FROM users ORDER BY NAME");
+   $total=count($users);
+
+   if ($total==1) {
+    $session->data['SITE_USERNAME']=$users[0]['USERNAME'];
+    $session->data['SITE_USER_ID']=$users[0]['ID'];
+   } else {
+    for($i=0;$i<$total;$i++) {
+     if ($users[$i]['HOST'] && $users[$i]['HOST']==$_SERVER['REMOTE_ADDR']) {
+      $session->data['SITE_USERNAME']=$users[$i]['USERNAME'];
+      $session->data['SITE_USER_ID']=$users[$i]['ID'];     
+     } elseif ($users[$i]['IS_DEFAULT']) {
+      $session->data['SITE_USERNAME']=$users[$i]['USERNAME'];
+      $session->data['SITE_USER_ID']=$users[$i]['ID'];     
+     }
+    }
+   }
+  }
+
+
+  if (!$session->data["AUTHORIZED"] && $session->data['SITE_USERNAME']) {
+   $user=SQLSelectOne("SELECT * FROM users WHERE USERNAME LIKE '".DBSafe($session->data['SITE_USERNAME'])."'");
+   if ($user['IS_ADMIN']) {
+    $user=SQLSelectOne("SELECT * FROM admin_users WHERE LOGIN='admin'");
+    $session->data['USER_NAME']=$user['LOGIN'];
+    $session->data['USER_LEVEL']=$user['PRIVATE'];
+    $session->data['USER_ID']=$user['ID'];
+    $session->data["AUTHORIZED"]=1;
+   }
+  }
 
   if (IsSet($session->data["AUTHORIZED"])) {
    $this->authorized=1;
+  } else {
+   $tmp=SQLSelectOne("SELECT ID FROM users WHERE IS_ADMIN=1");
+   if ($tmp['ID']) {
+    redirect("/");
+   }
+   //
   }
 
-  if ($this->print) {
+  global $ajax_panel;
+  if ($ajax_panel) {
+   include_once(DIR_MODULES.'inc_panel_ajax.php');
+  }
+
+  if ($this->print || $_GET['print']) {
+   $this->print=1;
    $out['PRINT']=1;
   }
 
@@ -58,12 +108,22 @@ function getParams() {
     clearCache(0);
    }
 
-   $modules=SQLSelect("SELECT * FROM project_modules WHERE `HIDDEN`='0' ORDER BY CATEGORY, `PRIORITY`, `TITLE`");
-   $old_cat='some_never_should_be_category_name';
-   for($i=0;$i<count($modules);$i++) {
+   $sqlQuery = "SELECT *
+                  FROM project_modules
+                 WHERE (`HIDDEN`='0' OR NAME='control_modules')
+                 ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_DEVICES#>', '<#LANG_SECTION_APPLICATIONS#>',
+                                '<#LANG_SECTION_SETTINGS#>', '<#LANG_SECTION_SYSTEM#>'),
+                          `PRIORITY`, `TITLE`";
+
+   $modules    = SQLSelect($sqlQuery);
+   $old_cat    = 'some_never_should_be_category_name';
+   $modulesCnt = count($modules);
+
+   for ($i = 0; $i < $modulesCnt; $i++) {
     if ($modules[$i]['NAME'] == $this->action) {
      $modules[$i]['SELECTED']=1;
     }
+    $modules[$i]['CATEGORY_ID']=substr(md5($modules[$i]['CATEGORY']), 0, 4);
     if ($modules[$i]['CATEGORY']!=$old_cat) {
      $modules[$i]['NEW_CATEGORY']=1;
      $old_cat=$modules[$i]['CATEGORY'];

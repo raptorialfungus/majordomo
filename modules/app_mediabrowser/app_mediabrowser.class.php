@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Media Browser Application
 *
@@ -142,6 +142,17 @@ function admin(&$out) {
  */
 
  global $id;
+
+ if ($this->view_mode=='clear_favorites') {
+  SQLExec("DELETE FROM media_favorites");
+  $this->redirect("?");
+ }
+
+ if ($this->view_mode=='clear_history') {
+  SQLExec("DELETE FROM media_history");  
+  $this->redirect("?");
+ }
+
  if ($this->view_mode=='delete') {
   $rec=SQLSelectOne("SELECT * FROM collections WHERE ID='".(int)$id."'");
   SQLExec("DELETE FROM collections WHERE ID='".$rec['ID']."'");
@@ -180,15 +191,21 @@ function admin(&$out) {
 */
 function usual(&$out) {
 
+    if(DIRECTORY_SEPARATOR=='/')
+        $run_linux=1;
+    else
+        $run_linux=0;
+
+
 
    $terminals=SQLSelect("SELECT * FROM terminals WHERE CANPLAY=1 ORDER BY TITLE");
    $total=count($terminals);
-   for($i=0;$i<$total;$i++) {
+   //for($i=0;$i<$total;$i++) {
     //if ($terminals[$i]['NAME']==$session->data['PLAY_TERMINAL']) {
     // $terminals[$i]['SELECTED']=1;
     // $out['TERMINAL_TITLE']=$terminals[$i]['TITLE'];
     //}
-   }
+   //}
    $out['TERMINALS']=$terminals;
    $out['TERMINALS_TOTAL']=count($terminals);
 
@@ -217,13 +234,28 @@ function usual(&$out) {
  }
  $this->collection_id=$collection_id;
 
- $out['COLLECTIONS']=SQLSelect("SELECT * FROM collections ORDER BY TITLE");
+ $res=SQLSelect("SELECT * FROM collections ORDER BY TITLE");
+    if ($this->action!='admin') {
+     $total=count($res);
+     $res2=array();
+     for($i=0;$i<$total;$i++) {
+      if (checkAccess('media', $res[$i]['ID'])) {
+       $res2[]=$res[$i];
+      }
+     }
+     $res=$res2;
+     unset($res2);
+    }
+ $out['COLLECTIONS']=$res;
+
 
  if (count($out['COLLECTIONS'])==1) {
   $collection_id=$out['COLLECTIONS'][0]['ID'];
   $this->collection_id=$collection_id;
   $out['COLLECTIONS_TOTAL']=1;
  }
+
+
 
 
 
@@ -234,6 +266,7 @@ function usual(&$out) {
  } else {
   return;
  }
+
 
  //$this->getConfig();
  //$path=$this->config['PATH'];
@@ -251,24 +284,48 @@ function usual(&$out) {
 
   $favorites=SQLSelect("SELECT * FROM media_favorites WHERE 1 ORDER BY ID DESC");
   if ($favorites) {
-   $total=count($favorites);
-   for($i=0;$i<$total;$i++) {
-    $favorites[$i]['PATH']=urlencode(utf2win($favorites[$i]['PATH']));
+   if(!$run_linux){
+    $total=count($favorites);
+    for($i=0;$i<$total;$i++) {
+     $favorites[$i]['PATH']=urlencode(utf2win($favorites[$i]['PATH']));
+    }
    }
    $out['FAVORITES']=$favorites;
   }
+
+  $media_history=SQLSelect("SELECT * FROM media_history WHERE 1 ORDER BY PLAYED DESC");
+  if ($media_history) {
+   if(!$run_linux){
+    $total=count($media_history);
+    for($i=0;$i<$total;$i++) {
+     $media_history[$i]['PATH']=urlencode(utf2win($media_history[$i]['PATH']));
+    }
+   }
+   $out['MEDIA_HISTORY']=$media_history;
+  }
+
 
   $folder=str_replace('././', './', $folder);
   $path=str_replace('././', './', $path);
 
 
+
   $act_dir=$path.$folder;
 
+  if($act_dir{0}=='/'){
+      $out['MEDIA_PATH']=$path;
+      $out['CURRENT_DIR']='./'.$folder;
+  } else {
+      $out['MEDIA_PATH']=win2utf($path);
+      $out['CURRENT_DIR']=win2utf('./'.$folder);
+  }
 
 
-  $out['MEDIA_PATH']=win2utf($path);
-  $out['CURRENT_DIR']=win2utf('./'.$folder);
+
+
   $out['CURRENT_DIR']=str_replace('././', './', $out['CURRENT_DIR']);
+
+
   $out['CURRENT_DIR_TITLE']=$folder;
 
   $tmp=explode('/', $out['CURRENT_DIR']);
@@ -280,7 +337,12 @@ function usual(&$out) {
     $tmp_rec['TITLE']=$tmp[$i];
     $spath.='/'.$tmp_rec['TITLE'];
     $spath=str_replace('././', './', $spath);
-    $tmp_rec['PATH']=urlencode(utf2win($spath).'/');
+    if($run_linux)
+        $tmp_rec['PATH']=urlencode($spath.'/');
+    else 
+        $tmp_rec['PATH']=urlencode(utf2win($spath).'/');
+
+
     if ($tmp_rec['TITLE']=='.') {
      $tmp_rec['TITLE']='Home';
     }
@@ -301,11 +363,43 @@ function usual(&$out) {
 
   global $file;
   if ($file) {
-   $out['FILE']=win2utf($file);
-   $out['BASEFILE']=win2utf(basename($file));
-   $file=str_replace('/', '\\\\', $file);
-   $out['FULLFILE']=win2utf(addslashes($path).$file);
-   $out['FULLFILE_S']=str_replace('\\\\', '\\', $out['FULLFILE']);
+
+      if($run_linux){
+          $out['FILE']=$file;
+          $out['BASEFILE']=basename($file);
+          $file=str_replace('/', '\\', $file);
+          $out['FULLFILE']=addslashes($path).$file;
+      } else {
+          $out['FILE']=win2utf($file);
+          $out['BASEFILE']=win2utf(basename($file));
+          $file=str_replace('/', '\\', $file);
+          $out['FULLFILE']=win2utf(($path).$file);
+      }
+
+   //$out['FULLFILE_S']=str_replace('\\\\', '\\', $out['FULLFILE']);
+   $out['FULLFILE_S']=$out['FULLFILE'];
+
+   if ($this->mode=='play') {
+    //FULLFILE_S
+    $rec=array();
+    $rec['TITLE']=$out['CURRENT_DIR_TITLE'];
+    $rec['PATH']=win2utf($folder);
+    $rec['LIST_ID']=(int)$list_id;
+    $rec['COLLECTION_ID']=$collection_id;
+    $rec['PLAYED']=date('Y-m-d H:i:s');
+    SQLExec("DELETE FROM media_history WHERE PATH LIKE '".DBSafe($rec['PATH'])."'");
+    SQLInsert('media_history', $rec);
+
+    $last10=SQLSelect("SELECT ID FROM media_history ORDER BY PLAYED DESC LIMIT 10");
+    $total=count($last10);
+    $ids=array();
+    for($i=0;$i<$total;$i++) {
+     $ids[]=$last10[$i]['ID'];
+    }
+    SQLExec("DELETE FROM media_history WHERE ID NOT IN (".implode(',', $ids).")");
+
+   }
+
   }
 
   if (preg_match('/foto/is', $act_dir) || preg_match('/photo/is', $act_dir)) {
@@ -347,9 +441,18 @@ function usual(&$out) {
     return strcmp(strtoupper($a["TITLE"]), strtoupper($b["TITLE"])); 
    }
 
+
   $dirs=array();
   //$act_dir='\\\\home\\media\\';
-  //echo $act_dir;
+
+  if (substr($act_dir, -1)!='/' && substr($act_dir, -1)!='\\') {
+   $act_dir.='/';
+  }
+
+  if (!is_dir($act_dir)) {
+   return;
+  }
+
   $d=openDir($act_dir);
   //exit;
 
@@ -366,8 +469,15 @@ function usual(&$out) {
      $rec['TITLE_SHORT']=substr($rec['TITLE_SHORT'], 0, 50).'...';
     }
 
-    $rec['TITLE']=win2utf($rec['TITLE']);
-    $rec['TITLE_SHORT']=win2utf($rec['TITLE_SHORT']);
+    if($run_linux){
+        $rec['TITLE']=$rec['TITLE'];
+        $rec['TITLE_SHORT']=$rec['TITLE_SHORT'];
+    } else {
+        $rec['TITLE']=win2utf($rec['TITLE']);
+        $rec['TITLE_SHORT']=win2utf($rec['TITLE_SHORT']);
+    }
+
+
 
     if (IsSet($descriptions[$file])) {
      $rec['DESCR']=$descriptions[$file];
@@ -381,6 +491,7 @@ function usual(&$out) {
 
   closeDir($d);
   }
+
 
 
   //$dirs=mysort_array($dirs, "TITLE");
@@ -397,6 +508,7 @@ function usual(&$out) {
   if ($cover) {
    $out['COVER']=$cover;
    $out['COVER_PATH']=urlencode(str_replace('\\\\', '\\', $act_dir).$cover);
+   $out['COVER_PATH']=urlencode(($act_dir).$cover);
   }
 
 
@@ -416,11 +528,19 @@ function usual(&$out) {
     } else {
      $rec['TITLE_SHORT']=$rec['TITLE'];
     }
-    $rec['TITLE']=win2utf($rec['TITLE']);
-    $rec['TITLE_SHORT']=win2utf($rec['TITLE_SHORT']);
+
+    if($run_linux){
+        $rec['TITLE']=$rec['TITLE'];
+        $rec['TITLE_SHORT']=$rec['TITLE_SHORT'];
+    } else {
+        $rec['TITLE']=win2utf($rec['TITLE']);
+        $rec['TITLE_SHORT']=win2utf($rec['TITLE_SHORT']);
+    }
+
     $rec['REAL_PATH']=($folder.$file);
     $rec['PATH']=urlencode($folder.$file);
-    $rec['FULL_PATH']=urlencode(str_replace('\\\\', '\\', $act_dir).$file);
+    //$rec['FULL_PATH']=urlencode(str_replace('\\\\', '\\', $act_dir).$file);
+    $rec['FULL_PATH']=urlencode($act_dir.$file);
     $size=filesize($act_dir.$file);
     $total_size+=$size;
     if ($size>1024) {
@@ -447,12 +567,16 @@ function usual(&$out) {
    $total=count($files);
    $out['TOTAL_FILES']=$total;
    for($i=0;$i<$total;$i++) {
-    if (preg_match('/\.jpg$/is', $files[$i]['PATH'])) {
+    if (preg_match('/\.jpg$/is', $files[$i]['PATH']) || preg_match('/\.jpeg$/is', $files[$i]['PATH']) || preg_match('/\.png$/is', $files[$i]['PATH'])) {
      $files[$i]['IS_FOTO']=1;
+     $total_photos++;
     }
     if (($i+1)%4==0) {
      $files[$i]['NEWROW']=1;
     }
+   }
+   if ($total_photos==$total) {
+    $out['LIST_MODE']='foto';
    }
    $out['FILES']=$files;
   }
@@ -475,31 +599,50 @@ function usual(&$out) {
 
 }
 
- function getDescriptions($dir) {
-  $descr=array();
-  if (file_exists($dir."Descript.ion")) {
-   $data=LoadFile($dir."Descript.ion");
-   $strings=explode("\n", $data);
-   for($i=0;$i<count($strings);$i++) {
-    $fields=explode("\t", $strings[$i]);
-    $filename=$fields[0];
-    $filename=str_replace("\"", "", $filename);
-    $description=$fields[1];
-    $descr[$filename]=$description;
-   }
-  }
-  return $descr;
- }
+   function getDescriptions($dir)
+   {
+      $descr = array();
 
- function setDescription($dir, $file, $descr) {
-  $descriptions=getDescriptions($dir);
-  $descriptions[$file]=$descr;
-  $data=array();
-  foreach($descriptions as $k=>$v) {
-   $data[]="\"$k\"\t$v";
-  }
-  SaveFile($dir."Descript.ion", join("\n", $data));
- }
+      if (file_exists($dir . "Descript.ion"))
+      {
+         $data    = LoadFile($dir . "Descript.ion");
+         $strings = explode("\n", $data);
+         $strCnt  = count($strings);
+
+         for ($i = 0; $i < $strCnt; $i++)
+         {
+            $fields      = explode("\t", $strings[$i]);
+            $filename    = str_replace("\"", "", $fields[0]);
+            $description = $fields[1];
+
+            $descr[$filename] = $description;
+         }
+      }
+
+      return $descr;
+   }
+
+/**
+ * Set directory description
+ * @param mixed $dir   Directory
+ * @param mixed $file  File
+ * @param mixed $descr Description
+ */
+function setDescription($dir, $file, $descr)
+{
+   $descriptions = self::getDescriptions($dir);
+   
+   $descriptions[$file] = $descr;
+   
+   $data = array();
+  
+   foreach($descriptions as $k => $v)
+   {
+      $data[] = "\"$k\"\t$v";
+   }
+   
+   SaveFile($dir . "Descript.ion", join("\n", $data));
+}
 
 
  /**
@@ -555,11 +698,11 @@ function usual(&$out) {
 *
 * @access private
 */
- function install() {
-  parent::install();
+ function install($parent_name="") {
+  parent::install($parent_name);
  }
 
- function dbInstall() {
+ function dbInstall($data) {
 /*
 terminals - Terminals
 */
@@ -573,6 +716,14 @@ terminals - Terminals
   media_favorites: TITLE varchar(255) NOT NULL DEFAULT ''
   media_favorites: LIST_ID int(10) unsigned NOT NULL DEFAULT '0'
   media_favorites: COLLECTION_ID int(10) unsigned NOT NULL DEFAULT '0'
+
+  media_history: ID int(10) unsigned NOT NULL auto_increment
+  media_history: PATH varchar(255) NOT NULL DEFAULT ''
+  media_history: TITLE varchar(255) NOT NULL DEFAULT ''
+  media_history: LIST_ID int(10) unsigned NOT NULL DEFAULT '0'
+  media_history: COLLECTION_ID int(10) unsigned NOT NULL DEFAULT '0'
+  media_history: PLAYED datetime
+
 
 EOD;
   parent::dbInstall($data);
